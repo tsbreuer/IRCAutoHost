@@ -32,9 +32,10 @@ public class RateLimiter {
     		String msg = outgoing.poll();
     		if (msg != null){
     			//System.out.println("Iterator has next");   			
-    			//System.out.println("Sending raw line :"+"PRIVMSG "+this.target+" "+msg);
+    			
+    			System.out.println("Sending raw line :"+"PRIVMSG "+this.target+" "+msg);
     			this.lastSentTime = currentTime;
-    			return "PRIVMSG "+target+" "+msg;
+    			return "PRIVMSG "+this.target+" "+msg;
     		
     		}
     	}

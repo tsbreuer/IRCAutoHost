@@ -4,13 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jibble.pircbot.*;
+import autohost.RateLimiter;
+import autohost.utils.RateLimiterThread;
 import java.util.regex.*;
 
 
 public class Autohost extends PircBot {
 	
 	List<Lobby> Lobbies = new ArrayList<>();
-	List<RateLimiter> limiters = new ArrayList<>();
+	public List<RateLimiter> limiters = new ArrayList<>();
 	private RateLimiterThread rate;
 	public static Autohost instance;
 	
@@ -99,7 +101,7 @@ public class Autohost extends PircBot {
 	
 	public void sendRawMessage(String target, String message) {
 		if (rate == null){
-			rate = new RateLimiterThread(this);
+			rate = new RateLimiterThread(Autohost.instance);
 			rate.start();
 			Autohost.instance.sendRawLine("PRIVMSG AutoHost return");
 			System.out.println("New RateLimiter");
@@ -125,33 +127,6 @@ public class Autohost extends PircBot {
 		this.sendRawLine(line);
 	}
 	
-	public class RateLimiterThread extends Thread {
-		public Autohost bot;
-		private Boolean stopped = false;
-		
-		public RateLimiterThread(Autohost host){
-			this.bot = host;		
-		}
-		
-		public void run(){		
-			while(!stopped){
-				//System.out.println("loop");
-				try {
-			for (RateLimiter limiter : Autohost.instance.limiters) {
-				if (limiter.hasNext()){
-				String line = limiter.updateQueue();
-					if (line != null)
-						System.out.println("Return line "+line);
-						Autohost.instance.sendRawLineViaQueue(line);
-				}
-			}
-			
-				Thread.sleep(200);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-			}
-		}
-	}
+	
 }
 
