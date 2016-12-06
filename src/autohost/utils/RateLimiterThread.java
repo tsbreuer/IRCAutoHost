@@ -15,13 +15,13 @@ public class RateLimiterThread extends Thread {
 		while(!stopped){
 			//System.out.println("loop");
 			try {
-		for (RateLimiter limiter : Autohost.instance.limiters) {
+		for (RateLimiter limiter : bot.instance.limiters) {
 			if (limiter.hasNext()){
 			String line = limiter.updateQueue();
 				if (line != null)
 					System.out.println("Return line "+line);
-				
-					//Autohost.instance.sendRawLine(line);					
+					bot.sendRawLine(line);	
+					System.out.println("Return line2 "+line);
 			}
 		}
 		
