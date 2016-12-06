@@ -10,4 +10,6 @@ public class Lobby {
 	public List<Integer> beatmapQueue;
 	public List<Integer> beatmapPlayed;
 	public List<Integer> voteStart;
+	
+	public Lobby (String channel){this.channel = channel;}
 }

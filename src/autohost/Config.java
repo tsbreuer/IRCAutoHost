@@ -8,7 +8,7 @@ public class Config {
 	
 	public static void main(String[] args) throws Exception {
 		Autohost bot = new Autohost ();
-		//bot.setVerbose(true);
+		bot.setVerbose(true);
 		bot.connect("irc.ppy.sh",6667,authToken);
 		
 		
