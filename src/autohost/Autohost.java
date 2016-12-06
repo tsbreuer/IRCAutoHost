@@ -12,13 +12,11 @@ public class Autohost extends PircBot {
 	List<Lobby> Lobbies = new ArrayList<>();
 	List<RateLimiter> limiters = new ArrayList<>();
 	private RateLimiterThread rate;
-	private Autohost bot;
+	public static Autohost instance;
 	
 	public Autohost (){
 		setName(Config.authName);	
-		rate = new RateLimiterThread(this);
-		rate.start();
-		bot = this;
+		instance = this;
 	}
 	
 	@Override
@@ -70,7 +68,7 @@ public class Autohost extends PircBot {
 			String[] args = message.split(" ");
 			if (args.length == 1){
 				if (args[0].equals("help")){
-					this.sendRawLine("PRIVMSG "+sender+" This is a help message.");
+					instance.sendRawLine("PRIVMSG "+sender+" This is a help message.");
 				}
 			}
 			else if (args.length == 2){
@@ -100,6 +98,14 @@ public class Autohost extends PircBot {
 	}
 	
 	public void sendRawMessage(String target, String message) {
+		if (rate == null){
+			rate = new RateLimiterThread(this);
+			rate.start();
+			Autohost.instance.sendRawLine("PRIVMSG AutoHost return");
+			System.out.println("New RateLimiter");
+			
+		}
+		System.out.println(this.rate.getState());
 		Boolean exists = false;
 		for (RateLimiter limiter : this.limiters){
 			if (limiter.target.equals(target)){
@@ -120,27 +126,27 @@ public class Autohost extends PircBot {
 	}
 	
 	public class RateLimiterThread extends Thread {
-		private Autohost host;
+		public Autohost bot;
 		private Boolean stopped = false;
 		
 		public RateLimiterThread(Autohost host){
-			this.host = host;			
+			this.bot = host;		
 		}
 		
-		public void run(){
+		public void run(){		
 			while(!stopped){
-				System.out.println("loop");
+				//System.out.println("loop");
 				try {
-			for (RateLimiter limiter : this.host.limiters) {
+			for (RateLimiter limiter : Autohost.instance.limiters) {
 				if (limiter.hasNext()){
 				String line = limiter.updateQueue();
 					if (line != null)
 						System.out.println("Return line "+line);
-						bot.IgnoreSend(line);
+						Autohost.instance.sendRawLineViaQueue(line);
 				}
 			}
 			
-				Thread.sleep(1000);
+				Thread.sleep(200);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}

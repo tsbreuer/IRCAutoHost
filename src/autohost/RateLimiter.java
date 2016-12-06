@@ -4,6 +4,8 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 
+
+
 public class RateLimiter {
     private int delay;
     public String target;
@@ -45,7 +47,8 @@ public class RateLimiter {
     }
 
 	public boolean hasNext() {
-		return this.outgoing.iterator().hasNext();
+            return !this.outgoing.isEmpty();
+        
 	}
 
 }
