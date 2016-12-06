@@ -12,11 +12,13 @@ public class Autohost extends PircBot {
 	List<Lobby> Lobbies = new ArrayList<>();
 	List<RateLimiter> limiters = new ArrayList<>();
 	private RateLimiterThread rate;
+	private Autohost bot;
 	
 	public Autohost (){
-		this.setName(Config.authName);	
-		this.rate = new RateLimiterThread(this);
-		this.rate.start();
+		setName(Config.authName);	
+		rate = new RateLimiterThread(this);
+		rate.start();
+		bot = this;
 	}
 	
 	@Override
@@ -113,23 +115,33 @@ public class Autohost extends PircBot {
 		}
 	}
 	
+	public void IgnoreSend(String line){
+		this.sendRawLine(line);
+	}
+	
 	public class RateLimiterThread extends Thread {
 		private Autohost host;
 		private Boolean stopped = false;
 		
 		public RateLimiterThread(Autohost host){
-			this.host = host;
+			this.host = host;			
 		}
 		
 		public void run(){
 			while(!stopped){
+				System.out.println("loop");
+				try {
 			for (RateLimiter limiter : this.host.limiters) {
-				limiter.updateQueue(this.host);
+				if (limiter.hasNext()){
+				String line = limiter.updateQueue();
+					if (line != null)
+						System.out.println("Return line "+line);
+						bot.IgnoreSend(line);
+				}
 			}
-			try {
-				Thread.sleep(100);
+			
+				Thread.sleep(1000);
 			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			}
