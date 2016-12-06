@@ -11,15 +11,12 @@ public class Autohost extends PircBot {
 	
 	List<Lobby> Lobbies = new ArrayList<>();
 	List<RateLimiter> limiters = new ArrayList<>();
+	private RateLimiterThread rate;
 	
 	public Autohost (){
-		this.setName(Config.authName);
-		
-		while(true) {
-			for (RateLimiter limiter : this.limiters){
-				limiter.updateQueue(this);
-			}
-		}
+		this.setName(Config.authName);	
+		this.rate = new RateLimiterThread(this);
+		this.rate.start();
 	}
 	
 	@Override
@@ -83,7 +80,8 @@ public class Autohost extends PircBot {
 		else
 		{
 			//this.sendRawLine("PRIVMSG "+sender+" This account is a bot. Command prefix is !. Send me !help for more info.");
-			this.sendRawMessage(sender, "This account is a bot. Command prefix is !. Send me !help for more info.");
+			sendRawMessage(sender, "This account is a bot. Command prefix is !. Send me !help for more info.");
+			
 		}
 	}
 	public void NewLobbyMessage(String channel,String sender, String message)
@@ -100,15 +98,42 @@ public class Autohost extends PircBot {
 	}
 	
 	public void sendRawMessage(String target, String message) {
+		Boolean exists = false;
 		for (RateLimiter limiter : this.limiters){
 			if (limiter.target.equals(target)){
 				limiter.addMessage(message);
+				exists = true;
 			}
-			else
-			{
-				RateLimiter rlimiter = new RateLimiter(target, 200);
-				limiters.add(rlimiter);
+		}
+		if (!exists){
+			System.out.println("New target. Add.");
+			RateLimiter rlimiter = new RateLimiter(target, 200);
+			rlimiter.addMessage(message);
+			limiters.add(rlimiter);		
+		}
+	}
+	
+	public class RateLimiterThread extends Thread {
+		private Autohost host;
+		private Boolean stopped = false;
+		
+		public RateLimiterThread(Autohost host){
+			this.host = host;
+		}
+		
+		public void run(){
+			while(!stopped){
+			for (RateLimiter limiter : this.host.limiters) {
+				limiter.updateQueue(this.host);
+			}
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			}
 		}
 	}
 }
+

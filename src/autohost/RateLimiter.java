@@ -17,14 +17,18 @@ public class RateLimiter {
     
     public void addMessage(String message){
     	this.outgoing.add(message);
+    	System.out.println("Added message to queue");
     }
     
     public void updateQueue(Autohost host){
+    	System.out.println("Checking for queues..");
     	long currentTime = System.currentTimeMillis();
     	if ((currentTime - this.lastSentTime) >= delay){
-    		String msg = outgoing.poll();
+    		 String msg = this.outgoing.poll();
+    		 System.out.println("Sending message "+msg);
     		if (msg != null){
     		host.sendRawLine("PRIVMSG "+this.target+" "+msg);
+    		System.out.println("Sending raw line :"+"PRIVMSG "+this.target+" "+msg);
     		this.lastSentTime = currentTime;
     		}
     	}
