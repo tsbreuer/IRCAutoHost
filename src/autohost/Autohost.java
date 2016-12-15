@@ -14,11 +14,10 @@ public class Autohost extends PircBot {
 	List<Lobby> Lobbies = new ArrayList<>();
 	public List<RateLimiter> limiters = new ArrayList<>();
 	private RateLimiterThread rate;
-	public Autohost instance;
 	
 	public Autohost (){
 		setName(Config.authName);	
-		instance = this;
+		
 	}
 	
 	@Override
@@ -100,8 +99,8 @@ public class Autohost extends PircBot {
 	}
 	
 	public void sendRawMessage(String target, String message) {
-		if (rate == null){
-			rate = new RateLimiterThread(this.instance);
+		if (rate== null){
+			rate = new RateLimiterThread(this);
 			rate.start();
 			this.sendRawLine("PRIVMSG AutoHost return");
 			System.out.println("New RateLimiter");
@@ -126,7 +125,12 @@ public class Autohost extends PircBot {
 	public void IgnoreSend(String line){
 		this.sendRawLine(line);
 	}
-	
+
+	/*public void setRate(RateLimiterThread rate2) {
+		rate2.start();
+		this.rate = rate2;	
+	}
+	*/
 	
 }
 

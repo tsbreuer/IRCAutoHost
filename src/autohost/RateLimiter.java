@@ -27,12 +27,8 @@ public class RateLimiter {
     	System.out.println("Checking for queues..");
     	long currentTime = System.currentTimeMillis();
     	if ((currentTime - this.lastSentTime) >= delay){
-    		//System.out.println("Sending message after "+delay);
-    		//System.out.println("Outgoing size "+outgoing.size());
     		String msg = outgoing.poll();
     		if (msg != null){
-    			//System.out.println("Iterator has next");   			
-    			
     			System.out.println("Sending raw line :"+"PRIVMSG "+this.target+" "+msg);
     			this.lastSentTime = currentTime;
     			return "PRIVMSG "+this.target+" "+msg;
