@@ -15,6 +15,7 @@ public class Config {
 		//bot.setVerbose(true);
 		//bot.connect("irc.ppy.sh",6667,authToken);
 		IRCClient irc = new IRCClient("irc.ppy.sh",6667,"HyPeX","56b0e8d1");
+
 		
 		
 		//if (bot.isConnected()) {
