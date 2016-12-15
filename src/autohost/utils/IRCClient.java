@@ -9,7 +9,11 @@ import java.util.regex.Pattern;
 
 import autohost.Lobby;
 import autohost.RateLimiter;
-
+// Okay, technically this isnt an until, since the entire fucking bot works here.
+// But moving this to main would mean work.
+// And no one likes work
+// Especially a lazy 19 year old in vacations
+// Which means, fuck it, i'll just leave it here.
 
 public class IRCClient {
 	
