@@ -1,20 +1,36 @@
 package autohost;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jibble.pircbot.*;
 import autohost.RateLimiter;
+import autohost.utils.IRCClient;
 import autohost.utils.RateLimiterThread;
 import java.util.regex.*;
 
 
-public class Autohost extends PircBot {
+public class Autohost  {
 	
+	Config config;
+	Socket socket;
+	BufferedWriter writer;
+	BufferedReader reader;
 	List<Lobby> Lobbies = new ArrayList<>();
 	public List<RateLimiter> limiters = new ArrayList<>();
-	private RateLimiterThread rate;
+	//private RateLimiterThread rate;
 	
+    public static void main(String[] args) throws Exception {
+    	Config config = new Config("config.properties");
+    	IRCClient irc = new IRCClient(config.server,6667,config.user,config.password);
+    	
+    }
+}
+	/*
 	public Autohost (){
 		setName(Config.authName);	
 		
@@ -37,23 +53,8 @@ public class Autohost extends PircBot {
 					}
 				}
 	}
-	
-	@Override
-	public void log(String line){
-		if (line.contains("cho@ppy.sh QUIT :") || (line.contains("PING cho.ppy.sh")) || (line.contains("PONG cho.ppy.sh"))) {
-			return;
-		}
-		System.out.println(line);
-		Pattern pattern = Pattern.compile("JOIN :#mp_\\d+");
-		Matcher matcher = pattern.matcher(line);
-		if (matcher.find()){
-			//System.out.println(line);
-			String lobbyChannel = line.substring(matcher.start()+6);
-			Lobby lobby = new Lobby(lobbyChannel);
-			Lobbies.add(lobby);
-			this.sendRawLine("PRIVMSG "+lobbyChannel+" !mp settings");
-		}
-	}
+	*/
+	/*
 	public void onPrivateMessage(String sender, String login, String hostname, String message){	
 		System.out.println(sender+" : "+message);
 		message = message.trim();
@@ -132,5 +133,4 @@ public class Autohost extends PircBot {
 	}
 	*/
 	
-}
 

@@ -2,6 +2,13 @@ package autohost.utils;
 
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import autohost.Lobby;
+import autohost.RateLimiter;
 
 
 public class IRCClient {
@@ -15,6 +22,9 @@ public class IRCClient {
 	private static String password;
 	private static Socket connectSocket;
 	private static PrintStream out;
+	List<Lobby> Lobbies = new ArrayList<>();
+	public List<RateLimiter> limiters = new ArrayList<>();
+	//private RateLimiterThread rate;
 	private Thread inputThread; // for debugging
 	  
 	//private static 
@@ -26,7 +36,11 @@ public class IRCClient {
 		 this.password = password;
 		 // Connect
 		 connect();
-		 register();
+		 try {
+			register();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public void connect() throws UnknownHostException, IOException {
@@ -35,14 +49,31 @@ public class IRCClient {
 			out = new PrintStream( connectSocket.getOutputStream() );
 		
 		    // for debugging
-		    inputThread = new InputDumper( connectSocket.getInputStream() );
-		    inputThread.setDaemon( true );
+		    inputThread = new InputDumper( connectSocket.getInputStream(), this );
+		    
 		    inputThread.start();
 	}
+	
+	public void log(String line){
+		if (line.contains("cho@ppy.sh QUIT :") || (line.contains("PING cho.ppy.sh")) || (line.contains("PONG cho.ppy.sh"))) {
+			return;
+		}
+		System.out.println(line);
+		Pattern pattern = Pattern.compile("JOIN :#mp_\\d+");
+		Matcher matcher = pattern.matcher(line);
+		if (matcher.find()){
+			//System.out.println(line);
+			String lobbyChannel = line.substring(matcher.start()+6);
+			Lobby lobby = new Lobby(lobbyChannel);
+			Lobbies.add(lobby);
+			Write("PRIVMSG "+lobbyChannel+" !mp settings");
+		}
+	}
 	  
-	public void register() {
+	public void register() throws InterruptedException {
 		Write( "PASS" + " " + password);
-	    Write( "USER" + " " + user + " "+ user +" "+ server +" :realname");
+		Write( "NICK" + " " + user);
+	    Write( "USER" + " " + user + " HyPeX irc.ppy.sh : Osu! Autohost Bot");
 	  }
 	public void Write(String message){
 		System.out.println(message);

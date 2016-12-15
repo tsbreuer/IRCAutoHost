@@ -9,9 +9,11 @@ import java.io.InputStreamReader;
 public class InputDumper extends Thread
 {
   private BufferedReader reader;
-  protected InputDumper( InputStream in )
+  private IRCClient client;
+  
+  protected InputDumper( InputStream in, IRCClient client )
   {
-    new DataInputStream( in );
+	this.client = client;
     this.reader = new BufferedReader(new InputStreamReader(in));
   }
   
@@ -22,7 +24,14 @@ public class InputDumper extends Thread
       String msg;
       while ( ( msg = reader.readLine()) != null )
       {
-        System.out.println( msg );
+    	  if (msg.indexOf("001") >= 0)
+    		 System.out.println("Logged in");
+    		  
+    	  if (msg.contains("PING"))
+    		  client.Write("PONG");
+    		  
+    	  client.log(msg);
+        	
       }
     }
     catch( IOException e )

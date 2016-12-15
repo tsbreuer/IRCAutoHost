@@ -20,7 +20,7 @@ public class RateLimiterThread extends Thread {
 			String line = limiter.updateQueue();
 				if (line != null)
 					System.out.println("Return line "+line);
-					bot.IgnoreSend(line);	
+					//bot.IgnoreSend(line);	
 					System.out.println("Return line2 "+line);
 			}
 		}
