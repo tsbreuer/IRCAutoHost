@@ -1,5 +1,8 @@
 package autohost;
 
+//import autohost.utils.RateLimiterThread;
+import autohost.utils.IRCClient;
+
 public class Config {
 	
 	public String channel = "#";
@@ -7,13 +10,16 @@ public class Config {
 	public static String authToken = "";
 	
 	public static void main(String[] args) throws Exception {
-		Autohost bot = new Autohost ();
-		bot.setVerbose(true);
-		bot.connect("irc.ppy.sh",6667,authToken);
+		//Autohost bot = new Autohost ();
+		//RateLimiterThread rate = new RateLimiterThread(bot);
+		//bot.setVerbose(true);
+		//bot.connect("irc.ppy.sh",6667,authToken);
+		IRCClient irc = new IRCClient("irc.ppy.sh",6667,authName,authToken);
+
 		
 		
-		if (bot.isConnected()) {
-			System.out.println("Connected!");
-		}
+		//if (bot.isConnected()) {
+		//	System.out.println("Connected!");
+		//}
 	}
 }
