@@ -4,13 +4,20 @@ import autohost.Autohost;
 import autohost.RateLimiter;
 
 public class RateLimiterThread extends Thread {
-	public Autohost bot;
+	public IRCClient bot;
 	private Boolean stopped = false;
+	private int timer = 200;
 	
-	public RateLimiterThread(Autohost host){
-		this.bot = host;		
+	public RateLimiterThread(IRCClient client){
+		this.bot = client;		
+	}
+
+	public RateLimiterThread(IRCClient client, int timer){
+		this.bot = client;		
+		this.timer = timer;
 	}
 	
+
 	public void run(){		
 		while(!stopped){
 			//System.out.println("loop");
@@ -19,13 +26,12 @@ public class RateLimiterThread extends Thread {
 			if (limiter.hasNext()){
 			String line = limiter.updateQueue();
 				if (line != null)
-					System.out.println("Return line "+line);
-					//bot.IgnoreSend(line);	
-					System.out.println("Return line2 "+line);
+					//System.out.println(line);
+					bot.Write(line);		
 			}
 		}
 		
-			Thread.sleep(200); // Message Delay interval
+			Thread.sleep(timer); // Message Delay interval
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

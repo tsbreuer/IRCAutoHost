@@ -10,6 +10,7 @@ public class Config {
 	public String user;
 	public String password;
 	public String server;
+	public int rate;
 	
 	public Config(String path) throws IOException,FileNotFoundException  {
 		Properties prop = new Properties();
@@ -18,6 +19,7 @@ public class Config {
 		this.user = prop.getProperty("user");
 		this.password = prop.getProperty("password");
 		this.server = prop.getProperty("server");
+		this.rate = Integer.parseInt(prop.getProperty("rate"));
 	}
 }
 

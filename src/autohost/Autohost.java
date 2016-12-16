@@ -26,7 +26,7 @@ public class Autohost  {
 	
     public static void main(String[] args) throws Exception {
     	Config config = new Config("config.properties");
-    	IRCClient irc = new IRCClient(config.server,6667,config.user,config.password);
+    	IRCClient irc = new IRCClient(config);
     	
     }
 }
