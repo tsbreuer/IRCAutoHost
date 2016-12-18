@@ -6,12 +6,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 
+import autohost.IRCClient;
+
 public class InputDumper extends Thread
 {
   private BufferedReader reader;
   private IRCClient client;
   
-  protected InputDumper( InputStream in, IRCClient client )
+  public InputDumper( InputStream in, IRCClient client )
   {
 	this.client = client;
     this.reader = new BufferedReader(new InputStreamReader(in));

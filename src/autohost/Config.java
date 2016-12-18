@@ -16,6 +16,7 @@ public class Config {
 	public String info;
 	public String author;
 	public String pmhelp;
+	public String apikey;
 	public List<Integer> ops = new ArrayList<>();
 	
 	public Config(String path) throws IOException,FileNotFoundException  {
@@ -29,6 +30,7 @@ public class Config {
 		this.info = prop.getProperty("info");
 		this.pmhelp = prop.getProperty("pmhelp");
 		this.author = prop.getProperty("author");
+		this.apikey = prop.getProperty("apikey");
 		String op = prop.getProperty("operators");
 		String[] opList = op.trim().split(",");
 		for (String id : opList){

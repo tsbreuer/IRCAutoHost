@@ -1,6 +1,7 @@
 package autohost.utils;
 
 import autohost.Autohost;
+import autohost.IRCClient;
 import autohost.RateLimiter;
 
 public class RateLimiterThread extends Thread {

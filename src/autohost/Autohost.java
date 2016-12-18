@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import autohost.RateLimiter;
-import autohost.utils.IRCClient;
 import autohost.utils.RateLimiterThread;
 import java.util.regex.*;
 
