@@ -3,8 +3,10 @@
 Under development. If you see something wrong in the code, its most likely intended and for showing/demostrating an idea.
 
 ---------------
-Update: PircBot showed up to be unrealiable and unusable for this project. After this being the 3rd IRC API that fails to work with bancho, i'll be writing my own IRC client connection for the bot, which will take more time.
+
+Update #1: PircBot showed up to be unrealiable and unusable for this project. After this being the 3rd IRC API that fails to work with bancho, i'll be writing my own IRC client connection for the bot, which will take more time.
 I've also got my last final tomorrow, so thats a reason for not working in the past week. Expect updates soon.
+
 ---------------
 
 Update #2: After getting my own IRC working, i'm now mapping all IRC data and then i'm gonna work on the features AutoHost had.
