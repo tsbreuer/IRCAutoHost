@@ -22,11 +22,7 @@ public class Autohost  {
 	BufferedReader reader;
 	List<Lobby> Lobbies = new ArrayList<>();
 	public List<RateLimiter> limiters = new ArrayList<>();
-<<<<<<< HEAD
-	private RateLimiterThread rate;
-=======
 	//private RateLimiterThread rate;
->>>>>>> 59a28bb224cb54d1921b76ae731f2771ea56f8e4
 	
     public static void main(String[] args) throws Exception {
     	Config config = new Config("config.properties");
@@ -137,8 +133,4 @@ public class Autohost  {
 	}
 	*/
 	
-<<<<<<< HEAD
-}
-=======
->>>>>>> 59a28bb224cb54d1921b76ae731f2771ea56f8e4
 

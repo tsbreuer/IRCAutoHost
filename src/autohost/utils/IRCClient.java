@@ -1,13 +1,6 @@
 package autohost.utils;
 
 import java.io.*;
-<<<<<<< HEAD
-import java.net.*;
-
-
-public class IRCClient {
-	
-=======
 import java.math.BigDecimal;
 import java.net.*;
 import java.util.ArrayList;
@@ -39,7 +32,6 @@ import autohost.Slot;
 public class IRCClient {
 	
 	
->>>>>>> 59a28bb224cb54d1921b76ae731f2771ea56f8e4
 	// Every single IRC client i tried fails, so i decided to make my own with blackjack & hookers.
 	// Blackjack
 	// Hookers
@@ -49,20 +41,6 @@ public class IRCClient {
 	private static String password;
 	private static Socket connectSocket;
 	private static PrintStream out;
-<<<<<<< HEAD
-	private Thread inputThread; // for debugging
-	  
-	//private static 
-	 public IRCClient ( String server, int port, String user, String password) throws UnknownHostException, IOException {
-		 // Define all settings. Meh.
-		 this.server = server;
-		 this.port = port;
-		 this.user = user;
-		 this.password = password;
-		 // Connect
-		 connect();
-		 register();
-=======
 	List<Lobby> Lobbies = new ArrayList<>();
 	public List<RateLimiter> limiters = new ArrayList<>();
 	//private RateLimiterThread rate;
@@ -88,7 +66,6 @@ public class IRCClient {
 			e.printStackTrace();
 		}
 		
->>>>>>> 59a28bb224cb54d1921b76ae731f2771ea56f8e4
 	}
 	
 	public void connect() throws UnknownHostException, IOException {
@@ -97,21 +74,6 @@ public class IRCClient {
 			out = new PrintStream( connectSocket.getOutputStream() );
 		
 		    // for debugging
-<<<<<<< HEAD
-		    inputThread = new InputDumper( connectSocket.getInputStream() );
-		    inputThread.setDaemon( true );
-		    inputThread.start();
-	}
-	  
-	public void register() {
-		Write( "PASS" + " " + password);
-	    Write( "USER" + " " + user + " "+ user +" "+ server +" :realname");
-	  }
-	public void Write(String message){
-		System.out.println(message);
-		out.println(message);
-	}
-=======
 		    inputThread = new InputDumper( connectSocket.getInputStream(), this );
 		    
 		    inputThread.start();
@@ -372,5 +334,4 @@ public class IRCClient {
 			}
 		return "";
 	}
->>>>>>> 59a28bb224cb54d1921b76ae731f2771ea56f8e4
 }

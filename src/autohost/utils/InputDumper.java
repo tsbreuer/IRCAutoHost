@@ -9,17 +9,11 @@ import java.io.InputStreamReader;
 public class InputDumper extends Thread
 {
   private BufferedReader reader;
-<<<<<<< HEAD
-  protected InputDumper( InputStream in )
-  {
-    new DataInputStream( in );
-=======
   private IRCClient client;
   
   protected InputDumper( InputStream in, IRCClient client )
   {
 	this.client = client;
->>>>>>> 59a28bb224cb54d1921b76ae731f2771ea56f8e4
     this.reader = new BufferedReader(new InputStreamReader(in));
   }
   
@@ -30,9 +24,6 @@ public class InputDumper extends Thread
       String msg;
       while ( ( msg = reader.readLine()) != null )
       {
-<<<<<<< HEAD
-        System.out.println( msg );
-=======
     	  if (msg.indexOf("001") >= 0){
     		  	if (!msg.contains("cho@ppy.sh QUIT")){
     		  		System.out.println("Logged in");
@@ -46,7 +37,6 @@ public class InputDumper extends Thread
     	  client.log(msg);
     	 // if (!msg.contains("QUIT"))
         	//System.out.println(msg);
->>>>>>> 59a28bb224cb54d1921b76ae731f2771ea56f8e4
       }
     }
     catch( IOException e )

@@ -29,11 +29,7 @@ public class RateLimiter {
     	if ((currentTime - this.lastSentTime) >= delay){
     		String msg = outgoing.poll();
     		if (msg != null){
-<<<<<<< HEAD
-    			System.out.println("Sending raw line :"+"PRIVMSG "+this.target+" "+msg);
-=======
     			//System.out.println("Sending raw line :"+"PRIVMSG "+this.target+" "+msg);
->>>>>>> 59a28bb224cb54d1921b76ae731f2771ea56f8e4
     			this.lastSentTime = currentTime;
     			return "PRIVMSG "+this.target+" "+msg;
     		
