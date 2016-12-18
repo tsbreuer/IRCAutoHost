@@ -24,9 +24,12 @@ public class InputDumper extends Thread
       String msg;
       while ( ( msg = reader.readLine()) != null )
       {
-    	  if (msg.indexOf("001") >= 0)
-    		 //System.out.println("Logged in");
-    		  
+    	  if (msg.indexOf("001") >= 0){
+    		  	if (!msg.contains("cho@ppy.sh QUIT")){
+    		  		System.out.println("Logged in");
+    		  		System.out.println("Line: "+ msg);
+    		  }
+    	  }
     	  if (msg.contains("PING")){
     		  String pingRequest = msg.substring(msg.indexOf("PING")+5);
     		  client.Write("PONG "+pingRequest);

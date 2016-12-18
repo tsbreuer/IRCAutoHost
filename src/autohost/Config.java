@@ -3,6 +3,8 @@ package autohost;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 
@@ -11,6 +13,10 @@ public class Config {
 	public String password;
 	public String server;
 	public int rate;
+	public String info;
+	public String author;
+	public String pmhelp;
+	public List<Integer> ops = new ArrayList<>();
 	
 	public Config(String path) throws IOException,FileNotFoundException  {
 		Properties prop = new Properties();
@@ -20,6 +26,15 @@ public class Config {
 		this.password = prop.getProperty("password");
 		this.server = prop.getProperty("server");
 		this.rate = Integer.parseInt(prop.getProperty("rate"));
+		this.info = prop.getProperty("info");
+		this.pmhelp = prop.getProperty("pmhelp");
+		this.author = prop.getProperty("author");
+		String op = prop.getProperty("operators");
+		String[] opList = op.trim().split(",");
+		for (String id : opList){
+			int playerid = Integer.valueOf(id);
+			ops.add(playerid);
+		}
 	}
 }
 
