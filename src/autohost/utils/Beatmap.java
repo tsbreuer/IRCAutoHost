@@ -28,4 +28,5 @@ public class Beatmap {
     long play_count;
     Boolean ignored;
     double  difficulty_cs;
+    String mods;
 }

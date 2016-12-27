@@ -21,7 +21,7 @@ public class Lobby {
 	public Integer minDifficulty;
 	public Integer maxDifficulty;
 	public Integer Graveyard;  // 4 = loved, 3 = qualified, 2 = approved, 1 = ranked, 0 = pending, -1 = WIP, -2 = graveyard
-	public String type;
+	public String type; // 0 = osu!, 1 = Taiko, 2 = CtB, 3 = osu!mania
 	public Integer mpID;
 	public String winCondition;
 	public String currentBeatmapAuthor;

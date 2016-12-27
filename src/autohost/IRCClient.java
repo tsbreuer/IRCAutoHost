@@ -9,6 +9,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,6 +17,7 @@ import javax.xml.bind.SchemaOutputResolver;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
@@ -61,6 +63,7 @@ public class IRCClient {
 		 this.user = config.user;
 		 this.password = config.password;
 		 this.RateLimit = config.rate;
+			// Mods definition, ignore
 		 // Connect
 		 connect();
 		 try {
@@ -116,7 +119,7 @@ public class IRCClient {
 			SendMessage(lobbyChannel,"!mp unlock");		
 			SendMessage(lobbyChannel,"!mp password");
 			lobby.LobbySize = 16;
-			lobby.type = "Standard";
+			lobby.type = "0";
 			lobby.Graveyard = 1;
 			lobby.maxDifficulty = 5;
 			lobby.minDifficulty = 4;
@@ -135,7 +138,11 @@ public class IRCClient {
 			if (matcher.matches()){
 				for (Lobby lobby : Lobbies) {
 					if (lobby.channel.equalsIgnoreCase(channel)){ // Is it an autohosted (by us) channel?
-						ParseChannelMessage(lobby, Sender, message);
+						try {
+							ParseChannelMessage(lobby, Sender, message);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
 					}
 					else
 					{
@@ -146,7 +153,8 @@ public class IRCClient {
 			// If not a lobby channel, then why the fuck we care?
 	}
 	
-	public void ParseChannelMessage(Lobby lobby, String Sender, String message){ 
+	public void ParseChannelMessage(Lobby lobby, String Sender, String message) throws ClientProtocolException, URISyntaxException, IOException{ 
+		
 		if (Sender.equalsIgnoreCase("BanchoBot")){
 		
 		// Room name and ID, important (?)
@@ -289,14 +297,78 @@ public class IRCClient {
 		if (message.toLowerCase().contains("hi")){
 			SendMessage(lobby.channel, "Hi "+Sender+"!");
 		}*/
+		message = message.trim().toLowerCase();
+		//--TODO
 		if (message.startsWith("!")){
 			message = message.substring(1);
 			String[] args = message.split(" ");
-		
+			if (args[0].equals("add")){
+				int id = Integer.valueOf(args[1]);
+				try{
+				getBeatmap(id, lobby, (obj) -> {
+					if (obj == null) {
+						SendMessage(lobby.channel, Sender + ": Beatmap not found.");
+					} else {
+						String mode = obj.getString("mode");
+						if (!mode.equals(lobby.type))
+						{
+							
+						}
+						else
+						{
+						SendMessage(lobby.channel, Sender + " That beatmap does not fit the lobby's current gamemode!");
+						}
+							
+						
+					}
+				}
+				);
+				for (String mod : args){
+					if (!mod.equalsIgnoreCase("add") && !mod.equals(args[1])){
+						if (mod.equalsIgnoreCase("DT")){
+							
+						}
+						if (mod.equalsIgnoreCase("NC")){
+							
+						}
+						if (mod.equalsIgnoreCase("HT")){
+							
+						}
+					}
+				}
+			} catch (Exception e){
+				e.printStackTrace();
+			}
+			
+			}
 		}
 		
 	}
 	
+	void getBeatmap(int beatmapId, Lobby lobby, Consumer<JSONObject> callback) throws URISyntaxException, ClientProtocolException, IOException {
+		RequestConfig defaultRequestConfig = RequestConfig.custom()
+			    .setSocketTimeout(10000)
+			    .setConnectTimeout(10000)
+			    .setConnectionRequestTimeout(10000)
+			    .build();
+		
+		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
+		URI uri = new URIBuilder()
+				.setScheme("http")
+				.setHost("osu.ppy.sh")
+				.setPath("/api/get_beatmaps")
+				.setParameter("k", configuration.apikey)
+				.setParameter("b", ""+beatmapId)
+				.setParameter("m", lobby.type)
+				.build();
+		HttpGet request = new HttpGet(uri);
+		HttpResponse response = httpClient.execute(request);
+		InputStream content = response.getEntity().getContent();
+		String stringContent = IOUtils.toString(content, "UTF-8"); 
+		JSONArray array = new JSONArray(stringContent);
+		callback.accept(array.length() > 0 ? (JSONObject)array.get(0) : null);
+	}
+
 	public Integer[] orderScores(Lobby lobby){
 		Integer score[] = new Integer[(lobby.LobbySize-1)];
 		int i = 0;
@@ -396,39 +468,39 @@ public class IRCClient {
 	}
 	
 	public String searchBeatmap(String name, Lobby lobby, String sender){		
-			try { 
-			RequestConfig defaultRequestConfig = RequestConfig.custom()
-				    .setSocketTimeout(10000)
-				    .setConnectTimeout(10000)
-				    .setConnectionRequestTimeout(10000)
-				    .build();
-			HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
-			String ranked = "Ranked";
-			String modes = lobby.type;
-			if (lobby.Graveyard == 1){
-				
-			}
+		try { 
+		RequestConfig defaultRequestConfig = RequestConfig.custom()
+			    .setSocketTimeout(10000)
+			    .setConnectTimeout(10000)
+			    .setConnectionRequestTimeout(10000)
+			    .build();
+		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
+		String ranked = "Ranked";
+		String modes = lobby.type;
+		if (lobby.Graveyard == 1){
 			
-			URI uri = new URIBuilder()
-					.setScheme("http")
-					.setHost("osusearch.com")
-					.setPath("/query/")
-					.setParameter("title", name)
-					.setParameter("statuses", "Ranked")
-					.setParameter("modes", modes)
-					.setParameter("order", "play_count")
-					.setParameter("star", "( "+ lobby.minDifficulty + "," + lobby.maxDifficulty + ")")
-					.build(); 
-			HttpGet request = new HttpGet(uri);
-			HttpResponse response = httpClient.execute(request);
-			InputStream content = response.getEntity().getContent();
-			String stringContent = IOUtils.toString(content, "UTF-8");
-			JSONObject obj = new JSONObject(stringContent);
-			JSONArray Info = obj.getJSONArray("beatmaps");
-			int size = 0;
-			for (int i=0; i < Info.length(); i++) {
-				size = size + 1;
-			};
+		}
+		
+		URI uri = new URIBuilder()
+				.setScheme("http")
+				.setHost("osusearch.com")
+				.setPath("/query/")
+				.setParameter("title", name)
+				.setParameter("statuses", "Ranked")
+				.setParameter("modes", modes)
+				.setParameter("order", "play_count")
+				.setParameter("star", "( "+ lobby.minDifficulty + "," + lobby.maxDifficulty + ")")
+				.build(); 
+		HttpGet request = new HttpGet(uri);
+		HttpResponse response = httpClient.execute(request);
+		InputStream content = response.getEntity().getContent();
+		String stringContent = IOUtils.toString(content, "UTF-8");
+		JSONObject obj = new JSONObject(stringContent);
+		JSONArray Info = obj.getJSONArray("beatmaps");
+		int size = 0;
+		for (int i=0; i < Info.length(); i++) {
+			size = size + 1;
+		};
 			if ( size > 1 ) {
 				if (size > 3) {
 				SendMessage(lobby.channel,sender + ": "+"Found "+size+" maps, please be more precise!");
