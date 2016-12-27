@@ -104,12 +104,12 @@ public class IRCClient {
 					PrivateMessage(target,user,message);
 		}
 		
-		
-		Pattern pattern = Pattern.compile("JOIN :#mp_\\d+");
+		//:HyPeX!cho@ppy.sh JOIN :#mp_29904363
+		Pattern pattern = Pattern.compile(":(.+)!cho@ppy.sh JOIN :(.+)");
 		Matcher matcher = pattern.matcher(line);
-		if (matcher.find()){
-			//System.out.println(line);
-			String lobbyChannel = line.substring(matcher.start()+6);
+		if (matcher.matches()){
+			if (matcher.group(1).equalsIgnoreCase(user)){
+			String lobbyChannel = matcher.group(2);
 			Lobby lobby = new Lobby(lobbyChannel);
 			Lobbies.add(lobby);
 			SendMessage(lobbyChannel,"!mp settings");
@@ -124,6 +124,8 @@ public class IRCClient {
 				lobby.OPs.add(op);	
 			}
 			lobby.timer = new TimerThread(this, lobby);
+			lobby.timer.start();
+			}
 		}
 	}
 	  
@@ -211,7 +213,8 @@ public class IRCClient {
 		if (joinMatch.matches()){
 			String playerName = joinMatch.group(1);
 			int jslot = Integer.valueOf(joinMatch.group(2));
-			int playerId = getId(playerName);
+			//int playerId = getId(playerName);
+			int playerId = 0;
 			String status = "Not Ready";
 			Slot newSlot = new Slot(jslot, playerName, playerId, status);
 				if (lobby.slots.containsKey(jslot)){
@@ -282,8 +285,14 @@ public class IRCClient {
 		return;
 		} // End of BanchoBot message filtering
 		
+		/*
 		if (message.toLowerCase().contains("hi")){
 			SendMessage(lobby.channel, "Hi "+Sender+"!");
+		}*/
+		if (message.startsWith("!")){
+			message = message.substring(1);
+			String[] args = message.split(" ");
+		
 		}
 		
 	}

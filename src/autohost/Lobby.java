@@ -13,7 +13,7 @@ import autohost.utils.TimerThread;
 public class Lobby {
 	public String channel;
 	public Integer LobbySize = 16;
-	public List<Integer> OPs;
+	public List<Integer> OPs = new LinkedList<>(); ;
 	
 	public TimerThread timer;
 	public String gamemode;
@@ -29,7 +29,7 @@ public class Lobby {
 	public Integer currentBeatmap;
 	public Queue<Beatmap> beatmapQueue = new LinkedList<>();
 	public Queue<Beatmap> beatmapPlayed = new LinkedList<>();
-	public List<Integer> voteStart;
+	public List<Integer> voteStart = new LinkedList<>();
 	public Map<Integer, Slot> slots = new HashMap<>();
 	public Map<Integer, String> scores = new HashMap<>();
 	

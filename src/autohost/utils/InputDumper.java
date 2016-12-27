@@ -33,8 +33,10 @@ public class InputDumper extends Thread
     		  }
     	  }
     	  if (msg.contains("PING")){
+    		  if (!msg.contains("cho@ppy.sh QUIT")) {
     		  String pingRequest = msg.substring(msg.indexOf("PING")+5);
     		  client.Write("PONG "+pingRequest);
+    		  }
     	  }
     	  client.log(msg);
     	 // if (!msg.contains("QUIT"))
