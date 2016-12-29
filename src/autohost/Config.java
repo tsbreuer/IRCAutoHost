@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-
 public class Config {
 	public String user;
 	public String password;
@@ -18,8 +17,8 @@ public class Config {
 	public String pmhelp;
 	public String apikey;
 	public List<Integer> ops = new ArrayList<>();
-	
-	public Config(String path) throws IOException,FileNotFoundException  {
+
+	public Config(String path) throws IOException, FileNotFoundException {
 		Properties prop = new Properties();
 		FileInputStream input = new FileInputStream(path);
 		prop.load(input);
@@ -33,10 +32,9 @@ public class Config {
 		this.apikey = prop.getProperty("apikey");
 		String op = prop.getProperty("operators");
 		String[] opList = op.trim().split(",");
-		for (String id : opList){
+		for (String id : opList) {
 			int playerid = Integer.valueOf(id);
 			ops.add(playerid);
 		}
 	}
 }
-

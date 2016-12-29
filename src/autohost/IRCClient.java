@@ -309,7 +309,7 @@ public class IRCClient {
 							String mode = obj.getString("mode");
 							if (mode.equals(lobby.type)) {
 								Beatmap beatmap = new Beatmap(obj);
-								
+
 							} else {
 								SendMessage(lobby.channel,
 										Sender + " That beatmap does not fit the lobby's current gamemode!");
@@ -338,7 +338,7 @@ public class IRCClient {
 		}
 
 	}
-	
+
 	public void getBeatmap(int beatmapId, Lobby lobby, Consumer<JSONObject> callback)
 			throws URISyntaxException, ClientProtocolException, IOException {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)

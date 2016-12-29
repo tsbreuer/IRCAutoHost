@@ -5,38 +5,44 @@ import org.json.JSONObject;
 
 public class Beatmap {
 	public int RequestedBy;
-    public String artist;
-    public int play_length;
-    public String gamemode;
-    public int pass_count;
-    public int total_length;
-    public int beatmapset_id;
-    public String genre; // 0 = any, 1 = unspecified, 2 = video game, 3 = anime, 4 = rock, 5 = pop, 6 = other, 7 = novelty, 9 = hip hop, 10 = electronic (note that there's no 8)
-    public String mapper;
-    public String date;
-    public String source;
-    public int beatmap_id;
-    public int beatmap_status;
-    public int map_count;
-    public int favorites;
-    public String language; //0 = any, 1 = other, 2 = english, 3 = japanese, 4 = chinese, 5 = instrumental, 6 = korean, 7 = french, 8 = german, 9 = swedish, 10 = spanish, 11 = italian
-    public String title;
-    public String difficulty_name;
-    public double difficulty;
-    public double difficulty_cs;
-    public double difficulty_od;
-    public double difficulty_ar;
-    public double difficulty_hp;
-    public int bpm;
-    public int play_count;
-    public Boolean ignored;
-    public String mods;
-    public String[] tags;
-    public int maxcombo;
-    
-    public Beatmap (){};
-    
-    public Beatmap (JSONObject obj) throws JSONException {
+	public String artist;
+	public int play_length;
+	public String gamemode;
+	public int pass_count;
+	public int total_length;
+	public int beatmapset_id;
+	public String genre; // 0 = any, 1 = unspecified, 2 = video game, 3 = anime,
+							// 4 = rock, 5 = pop, 6 = other, 7 = novelty, 9 =
+							// hip hop, 10 = electronic (note that there's no 8)
+	public String mapper;
+	public String date;
+	public String source;
+	public int beatmap_id;
+	public int beatmap_status;
+	public int map_count;
+	public int favorites;
+	public String language; // 0 = any, 1 = other, 2 = english, 3 = japanese, 4
+							// = chinese, 5 = instrumental, 6 = korean, 7 =
+							// french, 8 = german, 9 = swedish, 10 = spanish, 11
+							// = italian
+	public String title;
+	public String difficulty_name;
+	public double difficulty;
+	public double difficulty_cs;
+	public double difficulty_od;
+	public double difficulty_ar;
+	public double difficulty_hp;
+	public int bpm;
+	public int play_count;
+	public Boolean ignored;
+	public String mods;
+	public String[] tags;
+	public int maxcombo;
+
+	public Beatmap() {
+	};
+
+	public Beatmap(JSONObject obj) throws JSONException {
 		this.gamemode = obj.getString("mode");
 		this.artist = obj.getString("artist");
 		this.title = obj.getString("title");
@@ -59,5 +65,5 @@ public class Beatmap {
 		this.play_count = obj.getInt("playcount");
 		this.pass_count = obj.getInt("passcount");
 		this.maxcombo = obj.getInt("maxcombo");
-    };
+	};
 }
