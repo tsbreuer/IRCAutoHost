@@ -34,6 +34,7 @@ public class Beatmap {
 	public double difficulty_hp;
 	public int bpm;
 	public int play_count;
+	public int graveyard;
 	public Boolean ignored;
 	public String mods;
 	public String[] tags;
@@ -43,13 +44,14 @@ public class Beatmap {
 	};
 
 	public Beatmap(JSONObject obj) throws JSONException {
-		this.gamemode = obj.getString("mode");
+		this.gamemode = obj.getString("mode"); 
+		this.graveyard = obj.getInt("approved");
 		this.artist = obj.getString("artist");
 		this.title = obj.getString("title");
 		this.mapper = obj.getString("creator");
 		this.beatmap_id = obj.getInt("beatmap_id");
 		this.beatmapset_id = obj.getInt("beatmapset_id");
-		this.bpm = obj.getInt("BPM");
+		this.bpm = obj.getInt("bpm");
 		this.difficulty_name = obj.getString("version");
 		this.difficulty = obj.getDouble("difficultyrating");
 		this.difficulty_ar = obj.getDouble("diff_approach");
@@ -64,6 +66,6 @@ public class Beatmap {
 		this.tags = obj.getString("tags").split(" ");
 		this.play_count = obj.getInt("playcount");
 		this.pass_count = obj.getInt("passcount");
-		this.maxcombo = obj.getInt("maxcombo");
+		this.maxcombo = obj.getInt("max_combo");
 	};
 }

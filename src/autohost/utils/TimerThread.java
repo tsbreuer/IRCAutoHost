@@ -21,6 +21,11 @@ public class TimerThread extends Thread {
 	public void stopTimer() {
 		stopped = true;
 	}
+	
+	public void continueTimer(){
+		stopped = false;
+		resetTimer();
+	}
 
 	public boolean extendTimer() {
 		if (added)

@@ -1,8 +1,14 @@
 package autohost;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintStream;
 import java.math.BigDecimal;
-import java.net.*;
+import java.math.RoundingMode;
+import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -12,8 +18,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import javax.xml.bind.SchemaOutputResolver;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
@@ -118,6 +122,7 @@ public class IRCClient {
 				SendMessage(lobbyChannel, "!mp settings");
 				SendMessage(lobbyChannel, "!mp unlock");
 				SendMessage(lobbyChannel, "!mp password");
+				SendMessage(lobbyChannel, "!mp mods freemod");
 				lobby.LobbySize = 16;
 				lobby.type = "0";
 				lobby.Graveyard = 1;
@@ -172,7 +177,7 @@ public class IRCClient {
 			Pattern teamMode = Pattern.compile("Team Mode: (.+), Win condition: (.+)");
 			Matcher rTM = teamMode.matcher(message);
 			if (rTM.matches()) {
-				lobby.gamemode = rTM.group(1);
+				lobby.teamgamemode = rTM.group(1);
 				lobby.winCondition = rTM.group(2);
 			}
 
@@ -263,11 +268,12 @@ public class IRCClient {
 
 			if (message.equalsIgnoreCase("All players are ready")) {
 				SendMessage(lobby.channel, "!mp start");
+				lobby.timer.stopTimer();
 			}
 
 			if (message.equalsIgnoreCase("The match has started!")) {
 				lobby.scores.clear();
-				// check for player scores - TODO
+				lobby.voteStart.clear();
 			}
 
 			if (message.equalsIgnoreCase("The match has finished!")) {
@@ -299,41 +305,68 @@ public class IRCClient {
 		if (message.startsWith("!")) {
 			message = message.substring(1);
 			String[] args = message.split(" ");
-			if (args[0].equals("add")) {
+			if (args[0].equals("add") && args.length >= 1) {
 				int id = Integer.valueOf(args[1]);
 				try {
 					getBeatmap(id, lobby, (obj) -> {
 						if (obj == null) {
 							SendMessage(lobby.channel, Sender + ": Beatmap not found.");
-						} else {
-							String mode = obj.getString("mode");
-							if (mode.equals(lobby.type)) {
-								Beatmap beatmap = new Beatmap(obj);
+							return;
+						}
 
-							} else {
+						String mode = obj.getString("mode");
+						if (!mode.equals(lobby.type)) {
+							SendMessage(lobby.channel,
+									Sender + " That beatmap does not fit the lobby's current gamemode!");
+							return;
+						}
+						Beatmap beatmap = new Beatmap(obj);
+
+						if (lobby.onlyDifficulty) { // Does the lobby have locked difficulty limits?
+							if (!(beatmap.difficulty >= lobby.minDifficulty
+									&& beatmap.difficulty <= lobby.maxDifficulty)) { // Are we inside the criteria? if not, return
 								SendMessage(lobby.channel,
-										Sender + " That beatmap does not fit the lobby's current gamemode!");
+										Sender + " the difficulty of the song you requested does not match the lobby criteria. "
+												+ "(Lobby m/M: " + lobby.minDifficulty + "*/" + lobby.maxDifficulty
+												+ "*)," + " Song: " + beatmap.difficulty + "*");
+								return;
 							}
-
 						}
+						if (beatmap.graveyard < lobby.Graveyard){
+									SendMessage(lobby.channel, Sender + "That beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
+								return;
+						}
+						
+						if (lobby.onlyGenre) {
+							if (!beatmap.genre.equalsIgnoreCase(lobby.genre)){
+								SendMessage(lobby.channel, Sender + "This lobby is set to only play "+lobby.genres[Integer.valueOf(lobby.genre)] +" genre!");
+							return;
+							}
+						}
+						
+						lobby.beatmapQueue.add(beatmap);
+						SendMessage(lobby.channel, beatmap.artist+" - "+beatmap.title+ " ["+round(beatmap.difficulty,2)+"*] was added to the queue! Pos: "+lobby.beatmapQueue.size());
+							if (lobby.currentBeatmap != null && (lobby.currentBeatmap == 0)){
+								nextbeatmap(lobby);
+							}
+						
 					});
-					for (String mod : args) {
-						if (!mod.equalsIgnoreCase("add") && !mod.equals(args[1])) {
-							if (mod.equalsIgnoreCase("DT")) {
-
-							}
-							if (mod.equalsIgnoreCase("NC")) {
-
-							}
-							if (mod.equalsIgnoreCase("HT")) {
-
-							}
-						}
-					}
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 
+			}
+			else if (args[0].equalsIgnoreCase("r") || args[0].equalsIgnoreCase("ready")  ){
+				if (lobby.voteStart.contains(getId(Sender))){
+					SendMessage(Sender, "You already voted for starting!");
+				}
+				else
+				{
+					SendMessage(lobby.channel, Sender+ " voted for starting! ("+lobby.voteStart.size()+"/"+round(lobby.slots.size()*0.75,0)+")");
+				}
+			}
+			else if (args[0].equalsIgnoreCase("info")){
+				SendMessage(lobby.channel, "This is an in-development IRC version of autohost. Currently only !add [beatmapID] works. (i.e. !add 875432)");
 			}
 		}
 
@@ -376,13 +409,40 @@ public class IRCClient {
 	}
 
 	public void tryStart(Lobby lobby) {
-
+		int ready = 0;
+		int players = 0;
+		for (int i=0; i<16; i++){
+			if (lobby.slots.get(i).playerid != 0){
+				for (int id : lobby.voteStart){
+					if (id == lobby.slots.get(i).playerid){
+						ready++;
+					}
+				}
+				players++;
+			}
+		}
+		if (ready/players >= 0.75){
+			SendMessage(lobby.channel, ready+"/"+players+" have voted to start the game, starting.");
+		}
+		if (ready/players < 0.75){
+			SendMessage(lobby.channel, ready+"/"+round(players*0.75,2)+" votes to start the game. Please do !ready (or !r) if you're ready.");
+		}
+		lobby.timer.resetTimer();
 	}
 
 	public void nextbeatmap(Lobby lobby) {
 		Beatmap next = lobby.beatmapQueue.poll();
 		if (next != null) {
-
+			SendMessage(lobby.channel, "!mp map "+next.beatmap_id);
+			lobby.currentBeatmap = next.beatmap_id;
+			lobby.currentBeatmapAuthor = next.artist;
+			lobby.currentBeatmapName = next.title;
+			lobby.timer.continueTimer();
+			lobby.beatmapPlayed.add(next);
+		}
+		else
+		{
+			SendMessage(lobby.channel, "There are no more beatmaps in queue!");
 		}
 	}
 
@@ -552,6 +612,14 @@ public class IRCClient {
 		return id;
 	}
 
+	public static double round(double value, int places) {
+	    if (places < 0) throw new IllegalArgumentException();
+
+	    BigDecimal bd = new BigDecimal(value);
+	    bd = bd.setScale(places, RoundingMode.HALF_UP);
+	    return bd.doubleValue();
+	}
+	
 	public String getUsername(int userId) {
 		if (usernames.containsKey(userId) && (!usernames.get(userId).equals("")))
 			return usernames.get(userId);
