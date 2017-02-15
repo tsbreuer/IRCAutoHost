@@ -39,11 +39,15 @@ public class Beatmap {
 	public String mods;
 	public String[] tags;
 	public int maxcombo;
+	public Boolean DT;
+	public Boolean NC;
+	public Boolean HT;
 
 	public Beatmap() {
 	};
 
 	public Beatmap(JSONObject obj) throws JSONException {
+		this.DT = this.NC = this.HT = false;
 		this.gamemode = obj.getString("mode"); 
 		this.graveyard = obj.getInt("approved");
 		this.artist = obj.getString("artist");

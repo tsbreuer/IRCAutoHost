@@ -15,6 +15,9 @@ public class Lobby {
 	public Integer LobbySize = 16;
 	public List<Integer> OPs = new LinkedList<>();;
 
+	public List<Integer> voteStart = new LinkedList<>();
+	public List<Integer> voteskip  = new LinkedList<>();;
+	
 	public TimerThread timer;
 	public String name;
 
@@ -24,10 +27,11 @@ public class Lobby {
 	public Integer currentBeatmap = 0;
 	public Queue<Beatmap> beatmapQueue = new LinkedList<>();
 	public Queue<Beatmap> beatmapPlayed = new LinkedList<>();
-	public List<Integer> voteStart = new LinkedList<>();
+
 	public Map<Integer, Slot> slots = new HashMap<>();
 	public Map<Integer, String> scores = new HashMap<>();
 	public String[] genres = new String[]{ "any" , "unspecified", "video game", "anime", "rock", "pop", "other", "novelty", "error", "hip hop", "electronic"};
+	
 	
 	/* 
 	 * Lobby Specific Settings
