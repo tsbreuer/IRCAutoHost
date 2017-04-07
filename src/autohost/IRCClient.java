@@ -453,6 +453,7 @@ public class IRCClient {
 						Matcher diffM = maxdiff.matcher(message);
 						if (diffM.matches()) {
 							lobby.maxDifficulty = Integer.valueOf(diffM.group(1));
+							SendMessage(lobby.channel, "Max difficulty now is "+diffM.group(1));
 						}
 
 					}
