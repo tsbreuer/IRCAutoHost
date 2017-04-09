@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Queue;
 
 import autohost.utils.Beatmap;
+import autohost.utils.Request;
 import autohost.utils.Slot;
 import autohost.utils.TimerThread;
 
@@ -21,6 +22,7 @@ public class Lobby {
 	public TimerThread timer;
 	public String name;
 
+	public Boolean Playing = false;
 	public Integer mpID;
 	public String currentBeatmapAuthor = "HyPeX";
 	public String currentBeatmapName = "Some random shit";
@@ -29,6 +31,7 @@ public class Lobby {
 	public Queue<Beatmap> beatmapPlayed = new LinkedList<>();
 
 	public Map<Integer, Slot> slots = new HashMap<>();
+	public Map<String, Request> requests = new HashMap<>();
 	public Map<Integer, String> scores = new HashMap<>();
 	public String[] genres = new String[]{ "any" , "unspecified", "video game", "anime", "rock", "pop", "other", "novelty", "error", "hip hop", "electronic"};
 	
