@@ -52,7 +52,7 @@ public class IRCClient {
 	private static String password;
 	private static Socket connectSocket;
 	private static PrintStream out;
-	List<Lobby> Lobbies = new ArrayList<>();
+	Map<String, Lobby> Lobbies = new HashMap<>();
 	public List<RateLimiter> limiters = new ArrayList<>();
 	// private RateLimiterThread rate;
 	private Thread inputThread; // for debugging
@@ -104,7 +104,8 @@ public class IRCClient {
 		Pattern ChannelNo = Pattern.compile(":cho.ppy.sh 401 (.+) #mp_(.+) :No such nick");
 		Matcher channelded = ChannelNo.matcher(line);
 			if (channelded.matches()){
-				for (Lobby lobby : Lobbies){
+				if (Lobbies.containsKey("#mp_"+channelded.group(2))){
+					Lobby lobby = Lobbies.get("#mp_"+channelded.group(2));
 					if (lobby.channel.equalsIgnoreCase("#mp_"+channelded.group(2))){
 						lobby.timer.stopTimer();
 						removeLobby(lobby);
@@ -131,7 +132,7 @@ public class IRCClient {
 			if (matcher.group(1).equalsIgnoreCase(user)) {
 				String lobbyChannel = matcher.group(2);
 				Lobby lobby = new Lobby(lobbyChannel);
-				Lobbies.add(lobby);
+				Lobbies.put(lobbyChannel, lobby);
 				SendMessage(lobbyChannel, "!mp settings");
 				SendMessage(lobbyChannel, "!mp unlock");
 				SendMessage(lobbyChannel, "!mp password");
@@ -162,7 +163,8 @@ public class IRCClient {
 			try {
 				if (Lobbies.size() > 0) {
 					Boolean channelLoaded = false;
-					for (Lobby lobby : Lobbies) {
+					if (Lobbies.containsKey(channel)){
+						Lobby lobby = Lobbies.get(channel);
 						if (lobby.channel.equalsIgnoreCase(channel)) { // Is it
 																		// an
 																		// autohosted
@@ -605,7 +607,7 @@ public class IRCClient {
 	
 	void removeLobby(Lobby lobby) {
 		  synchronized(Lobbies) {
-		    Lobbies.remove(lobby);
+		    Lobbies.remove(lobby.channel);
 		    lobby.timer.stopTimer();
 		  }
 		}
@@ -804,9 +806,9 @@ public class IRCClient {
 			String[] args = message.split(" ");
 			if (args[0].equalsIgnoreCase("help")) {
 				SendMessage(sender, configuration.pmhelp);
-				Iterator<Lobby> lobbyit = Lobbies.iterator();
-				for (int i = 0; i < Lobbies.size(); i++) {
-					Lobby lobby = lobbyit.next();
+				int i = 0;
+				for (Lobby lobby : Lobbies.values()) {
+					i++;
 					SendMessage(sender, "Lobby [" + i + "] || Name: " + lobby.name + " || Stars: " + lobby.minDifficulty
 							+ "* - " + lobby.maxDifficulty + "* || Slots: [" + lobby.slots.size() + "/16]");
 				}
@@ -814,7 +816,7 @@ public class IRCClient {
 				return;
 			}
 			if (args[0].equalsIgnoreCase("reloadRooms")) {
-				for (Lobby lobby : Lobbies) {
+				for (Lobby lobby : Lobbies.values()) {
 					SendMessage(lobby.channel, "!mp settings");
 					System.out.println("Reloading " + lobby.channel);
 				}
@@ -830,9 +832,9 @@ public class IRCClient {
 					}
 					int moveMe = Integer.valueOf(matchMove.group(1));
 
-					Iterator<Lobby> lobbyit = Lobbies.iterator();
-					for (int i = 0; i < Lobbies.size(); i++) {
-						Lobby lobby = lobbyit.next();
+					int i=0;
+					for (Lobby lobby : Lobbies.values()) {
+						i++;
 						if (i == moveMe) {
 							if (lobby.slots.size() < 16) {
 								SendMessage(lobby.channel, "!mp move " + sender);
