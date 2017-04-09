@@ -457,7 +457,7 @@ public class IRCClient {
 				} else {
 					lobby.voteStart.add(getId(Sender));
 					SendMessage(lobby.channel, Sender + " voted for starting! (" + lobby.voteStart.size() + "/"
-							+ round(lobby.slots.size() * 0.75, 0) + ")");
+							+ ((int)Math.ceil(lobby.slots.size() * 0.75)) + ")");
 					if (lobby.voteStart.size() >= round(lobby.slots.size() * 0.75, 0)) {
 						start(lobby);
 					}
@@ -471,7 +471,7 @@ public class IRCClient {
 					SendMessage(Sender, "You already voted for skipping!");
 				} else {
 					SendMessage(lobby.channel, Sender + " voted for skipping! (" + lobby.voteskip.size() + "/"
-							+ round(lobby.slots.size() * 0.6, 0) + ")");
+							+ ((int)Math.ceil(lobby.slots.size() * 0.6)) + ")");
 					lobby.voteskip.add(getId(Sender));
 					if (lobby.voteskip.size() / lobby.slots.size() >= 0.6) {
 						nextbeatmap(lobby);
@@ -769,7 +769,7 @@ public class IRCClient {
 			start(lobby);
 		}
 		if (ready / players < 0.75) {
-			SendMessage(lobby.channel, ready + "/" + round(players * 0.75, 2)
+			SendMessage(lobby.channel, ready + "/" + ((int)Math.ceil(players * 0.75))
 					+ " votes to start the game. Please do !ready (or !r) if you're ready.");
 		}
 		lobby.timer.resetTimer();
