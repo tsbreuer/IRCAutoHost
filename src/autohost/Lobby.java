@@ -16,8 +16,8 @@ public class Lobby {
 	public Integer LobbySize = 16;
 	public List<Integer> OPs = new LinkedList<>();;
 
-	public List<Integer> voteStart = new LinkedList<>();
-	public List<Integer> voteskip  = new LinkedList<>();;
+	public List<String> voteStart = new LinkedList<>();
+	public List<String> voteskip  = new LinkedList<>();;
 	
 	public TimerThread timer;
 	public String name;
@@ -46,8 +46,16 @@ public class Lobby {
 	
 	public String winCondition; // Win type. Score, Scorev2, etc
 	
-	public Integer Graveyard; // 4 = loved, 3 = qualified, 2 = approved, 1 = ranked, 0 = pending, -1 = WIP, -2 = graveyard
+	public Integer status; // 4 = loved, 3 = qualified, 2 = approved, 1 = ranked, 0 = pending, -1 = WIP, -2 = graveyard
 
+	public Boolean loved;
+	public Boolean qualified;
+	public Boolean approved;
+	public Boolean ranked;
+	public Boolean pending;
+	public Boolean WIP;
+	public Boolean graveyard;
+	
 	public Boolean onlyType = true; // Lock lobby to type
 	public String type; // 0 = osu!, 1 = Taiko, 2 = CtB, 3 = osu!mania
 
@@ -65,8 +73,8 @@ public class Lobby {
 
 	
 	public Boolean onlyDifficulty = true; // Lock lobby to difficulty
-	public Integer minDifficulty = 4;
-	public Integer maxDifficulty = 5;
+	public Double minDifficulty = (double) 4;
+	public Double maxDifficulty = (double) 5;
 
 	public Lobby(String channel) {
 		this.channel = channel;

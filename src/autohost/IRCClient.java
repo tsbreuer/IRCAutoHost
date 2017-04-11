@@ -100,18 +100,18 @@ public class IRCClient {
 			return;
 		}
 		System.out.println(line);
-		//:cho.ppy.sh 401 AutoHost #mp_32349656 :No such nick
+		// :cho.ppy.sh 401 AutoHost #mp_32349656 :No such nick
 		Pattern ChannelNo = Pattern.compile(":cho.ppy.sh 401 (.+) #mp_(.+) :No such nick");
 		Matcher channelded = ChannelNo.matcher(line);
-			if (channelded.matches()){
-				if (Lobbies.containsKey("#mp_"+channelded.group(2))){
-					Lobby lobby = Lobbies.get("#mp_"+channelded.group(2));
-					if (lobby.channel.equalsIgnoreCase("#mp_"+channelded.group(2))){
-						lobby.timer.stopTimer();
-						removeLobby(lobby);
-					}
+		if (channelded.matches()) {
+			if (Lobbies.containsKey("#mp_" + channelded.group(2))) {
+				Lobby lobby = Lobbies.get("#mp_" + channelded.group(2));
+				if (lobby.channel.equalsIgnoreCase("#mp_" + channelded.group(2))) {
+					lobby.timer.stopTimer();
+					removeLobby(lobby);
 				}
 			}
+		}
 		Pattern channel = Pattern.compile(":(.+)!cho@ppy.sh PRIVMSG (.+) :(.+)");
 		Matcher channelmatch = channel.matcher(line);
 		if (channelmatch.find()) {
@@ -139,9 +139,9 @@ public class IRCClient {
 				SendMessage(lobbyChannel, "!mp mods Freemod");
 				lobby.LobbySize = 16;
 				lobby.type = "0";
-				lobby.Graveyard = 1;
-				lobby.maxDifficulty = 5;
-				lobby.minDifficulty = 4;
+				lobby.status = 1;
+				lobby.maxDifficulty = (double) 5;
+				lobby.minDifficulty = (double) 4;
 				for (int op : configuration.ops) {
 					lobby.OPs.add(op);
 				}
@@ -163,7 +163,7 @@ public class IRCClient {
 			try {
 				if (Lobbies.size() > 0) {
 					Boolean channelLoaded = false;
-					if (Lobbies.containsKey(channel)){
+					if (Lobbies.containsKey(channel)) {
 						Lobby lobby = Lobbies.get(channel);
 						if (lobby.channel.equalsIgnoreCase(channel)) { // Is it
 																		// an
@@ -203,7 +203,6 @@ public class IRCClient {
 			Pattern roomName = Pattern.compile("Room name: (.+), History: https://osu.ppy.sh/mp/(.+)");
 			Matcher rNM = roomName.matcher(message);
 
-			System.out.println("Room name matching:" + message);
 			if (rNM.matches()) {
 				System.out.println("New room name! " + rNM.group(1));
 				lobby.name = rNM.group(1);
@@ -290,24 +289,27 @@ public class IRCClient {
 			if (moveMatcher.matches()) {
 				int playerId = 0;
 				playerId = getId(moveMatcher.group(1));
-				Slot player = new Slot(Integer.valueOf(moveMatcher.group(2)), moveMatcher.group(1), playerId, "Not Ready");
-				for (int i = 1; i < (lobby.LobbySize + 1); i++) {
+				Slot player = new Slot(Integer.valueOf(moveMatcher.group(2)), moveMatcher.group(1), playerId,
+						"Not Ready");
+				for (int i = 1; i < 17; i++) {
 					if (lobby.slots.containsKey(i)) {
 						if (lobby.slots.get(i).name.equalsIgnoreCase(moveMatcher.group(1))) {
 							player = lobby.slots.get(i);
 							lobby.slots.remove(i);
-							}
 						}
 					}
+				}
 				lobby.slots.put(Integer.valueOf(moveMatcher.group(2)), player);
 			}
 
-			Pattern left = Pattern.compile("(.+) left the game");
+			Pattern left = Pattern.compile("(.+) left the game.");
 			Matcher leftMatcher = left.matcher(message);
 			if (leftMatcher.matches()) {
-				for (int i = 1; i < (lobby.LobbySize + 1); i++) {
-					if (lobby.slots.get(i).name.equalsIgnoreCase(moveMatcher.group(1))) {
-						lobby.slots.remove(i);
+				for (int i = 1; i < 17; i++) {
+					if (lobby.slots.containsKey(i)) {
+						if (lobby.slots.get(i).name.equalsIgnoreCase(leftMatcher.group(1))) {
+							lobby.slots.remove(i);
+						}
 					}
 				}
 			}
@@ -369,20 +371,19 @@ public class IRCClient {
 				Pattern mapURLS = Pattern.compile("add (.+)osu.ppy.sh/s/(\\d+)(.*)");
 				Matcher mapUS = mapURLS.matcher(message);
 				if (mapR.matches()) {
-				id = Integer.valueOf(mapR.group(1));
-				}
-				else if (mapU.matches()) {
+					id = Integer.valueOf(mapR.group(1));
+				} else if (mapU.matches()) {
 					id = Integer.valueOf(mapU.group(2));
-				}
-				else if (mapUS.matches()){
-					SendMessage(lobby.channel,
-							Sender + " You introduced a beatmap set link, processing beatmaps... (for a direct difficulty add use the /b/ link)");
+				} else if (mapUS.matches()) {
+					SendMessage(lobby.channel, Sender
+							+ " You introduced a beatmap set link, processing beatmaps... (for a direct difficulty add use the /b/ link)");
 					int bid = Integer.valueOf(mapUS.group(2));
 					askForConfirmation(Sender, bid, lobby);
 					return;
 				}
-				if (id == 0){
-					SendMessage(lobby.channel, Sender+" Incorrect Arguments for !add. Please use the beatmap URL. !add [url]");
+				if (id == 0) {
+					SendMessage(lobby.channel,
+							Sender + " Incorrect Arguments for !add. Please use the beatmap URL. !add [url]");
 					return;
 				}
 				try {
@@ -418,7 +419,7 @@ public class IRCClient {
 								return;
 							}
 						}
-						if (beatmap.graveyard < lobby.Graveyard) {
+						if (beatmap.graveyard < lobby.status) {
 							SendMessage(lobby.channel, Sender
 									+ "That beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
 							return;
@@ -455,9 +456,9 @@ public class IRCClient {
 				if (lobby.voteStart.contains(getId(Sender))) {
 					SendMessage(Sender, "You already voted for starting!");
 				} else {
-					lobby.voteStart.add(getId(Sender));
+					lobby.voteStart.add(Sender);
 					SendMessage(lobby.channel, Sender + " voted for starting! (" + lobby.voteStart.size() + "/"
-							+ round(lobby.slots.size() * 0.75, 0) + ")");
+							+ (int) round(lobby.slots.size() * 0.75, 0) + ")");
 					if (lobby.voteStart.size() >= round(lobby.slots.size() * 0.75, 0)) {
 						start(lobby);
 					}
@@ -467,13 +468,14 @@ public class IRCClient {
 					SendMessage(Sender, "The lobby is currently playing, you cant vote for skipping right now.");
 					return;
 				}
-				if (lobby.voteskip.contains(getId(Sender))) {
+				if (lobby.voteskip.contains(Sender)) {
 					SendMessage(Sender, "You already voted for skipping!");
 				} else {
+					lobby.voteskip.add(Sender);
 					SendMessage(lobby.channel, Sender + " voted for skipping! (" + lobby.voteskip.size() + "/"
-							+ round(lobby.slots.size() * 0.6, 0) + ")");
-					lobby.voteskip.add(getId(Sender));
-					if (lobby.voteskip.size() / lobby.slots.size() >= 0.6) {
+							+ (int) round(lobby.slots.size() * 0.6, 0) + ")");
+					if (lobby.voteskip.size() >= (int) round(lobby.slots.size() *0.6,0)) {
+						SendMessage(lobby.channel, "Map has been skipped by vote.");
 						nextbeatmap(lobby);
 					}
 				}
@@ -481,11 +483,13 @@ public class IRCClient {
 				SendMessage(lobby.channel,
 						"This is an in-development IRC version of autohost developed by HyPeX. Do !commands to know them ;)");
 			} else if (args[0].equalsIgnoreCase("commands")) {
-				SendMessage(lobby.channel, "C.List: !add [beatmap] || !ready (or !r) || !skip (or !s) || !queue (or !playlist)");
+				SendMessage(lobby.channel,
+						"C.List: !add [beatmap] || !ready (or !r) || !skip (or !s) || !queue (or !playlist)");
 			} else if (args[0].equalsIgnoreCase("playlist") || args[0].equalsIgnoreCase("queue")) {
-				String playlist ="Queue: "+lobby.beatmapQueue.size()+" || ";
-				for (Beatmap bm : lobby.beatmapQueue){
-					playlist = playlist + "[https://osu.ppy.sh/b/"+bm.beatmap_id+" "+bm.artist+" - "+bm.title+"] ["+round(bm.difficulty,2)+"*] || ";
+				String playlist = "Queue: " + lobby.beatmapQueue.size() + " || ";
+				for (Beatmap bm : lobby.beatmapQueue) {
+					playlist = playlist + "[https://osu.ppy.sh/b/" + bm.beatmap_id + " " + bm.artist + " - " + bm.title
+							+ "] [" + round(bm.difficulty, 2) + "*] || ";
 				}
 				SendMessage(lobby.channel, playlist);
 			} else if (args[0].equalsIgnoreCase("select")) {
@@ -510,7 +514,7 @@ public class IRCClient {
 						Pattern maxdiff = Pattern.compile("maxdiff (\\d+)");
 						Matcher diffM = maxdiff.matcher(message);
 						if (diffM.matches()) {
-							lobby.maxDifficulty = Integer.valueOf(diffM.group(1));
+							lobby.maxDifficulty = Double.valueOf(diffM.group(1));
 							SendMessage(lobby.channel, "Max difficulty now is " + diffM.group(1));
 						}
 
@@ -520,6 +524,17 @@ public class IRCClient {
 				for (int ID : lobby.OPs) {
 					if (ID == (getId(Sender))) {
 						SendMessage(lobby.channel, "!mp mods Freemod");
+					}
+				}
+				
+			} else if (args[0].equalsIgnoreCase("lobby")) {
+				for (int ID : lobby.OPs) {
+					if (ID == (getId(Sender))) {
+						Pattern setting = Pattern.compile("lobby (.+) (.*)");
+						Matcher settingMatcher = setting.matcher(message);
+						if (settingMatcher.matches()){
+							
+						}
 					}
 				}
 			} else if (args[0].equalsIgnoreCase("kick")) {
@@ -570,7 +585,8 @@ public class IRCClient {
 						Pattern maxdiff = Pattern.compile("mindiff (\\d+)");
 						Matcher diffM = maxdiff.matcher(message);
 						if (diffM.matches()) {
-							lobby.minDifficulty = Integer.valueOf(diffM.group(1));
+							lobby.minDifficulty = Double.valueOf(diffM.group(1));
+							SendMessage(lobby.channel, "New minimum difficulty is " + diffM.group(1));
 						}
 
 					}
@@ -578,8 +594,13 @@ public class IRCClient {
 			} else if (args[0].equalsIgnoreCase("hostme")) {
 				for (int ID : lobby.OPs) {
 					if (ID == (getId(Sender))) {
-
 						SendMessage(lobby.channel, "!mp host #" + ID);
+					}
+				}
+			} else if (args[0].equalsIgnoreCase("clearhost")) {
+				for (int ID : lobby.OPs) {
+					if (ID == (getId(Sender))) {
+						SendMessage(lobby.channel, "!mp clearhost");
 					}
 				}
 			}
@@ -604,18 +625,18 @@ public class IRCClient {
 		}
 
 	}
-	
+
 	void removeLobby(Lobby lobby) {
-		  synchronized(Lobbies) {
-		    Lobbies.remove(lobby.channel);
-		    lobby.timer.stopTimer();
-		  }
+		synchronized (Lobbies) {
+			Lobbies.remove(lobby.channel);
+			lobby.timer.stopTimer();
 		}
+	}
 
 	private void addBeatmap(Lobby lobby, Beatmap beatmap) {
 		lobby.beatmapQueue.add(beatmap);
-		SendMessage(lobby.channel, beatmap.artist + " - " + beatmap.title + "("+beatmap.difficulty_name+")" + " [" + round(beatmap.difficulty, 2)
-				+ "*] was added to the queue! Pos: " + lobby.beatmapQueue.size());
+		SendMessage(lobby.channel, beatmap.artist + " - " + beatmap.title + "(" + beatmap.difficulty_name + ")" + " ["
+				+ round(beatmap.difficulty, 2) + "*] was added to the queue! Pos: " + lobby.beatmapQueue.size());
 		if (lobby.currentBeatmap == null || (lobby.currentBeatmap == 0)) {
 			nextbeatmap(lobby);
 		}
@@ -630,7 +651,7 @@ public class IRCClient {
 				}
 				Request request = new Request();
 				// lobby.requests
-				System.out.println("Array has #objects: "+array.length());
+				System.out.println("Array has #objects: " + array.length());
 				for (int i = 0; i < array.length(); i++) {
 					JSONObject obj = array.getJSONObject(i);
 					Boolean block = false;
@@ -644,28 +665,36 @@ public class IRCClient {
 					if (lobby.onlyDifficulty) { // Does the lobby have
 												// locked difficulty limits?
 						if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) {
-							//SendMessage(lobby.channel, Sender+ " Difficulty [https://osu.ppy.sh/b/"+beatmap.beatmap_id+" "+beatmap.difficulty_name+"] doesnt match the lobby difficulty.");
+							// SendMessage(lobby.channel, Sender+ " Difficulty
+							// [https://osu.ppy.sh/b/"+beatmap.beatmap_id+"
+							// "+beatmap.difficulty_name+"] doesnt match the
+							// lobby difficulty.");
 							block = true;
 						}
 					}
-					if (beatmap.graveyard < lobby.Graveyard) {
-						if (!block){
-						//SendMessage(lobby.channel, Sender+ "That beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
-						block = true;}
+					if (beatmap.graveyard < lobby.status) {
+						if (!block) {
+							// SendMessage(lobby.channel, Sender+ "That beatmap
+							// is not within ranking criteria for this lobby!
+							// (Ranked/loved/etc)");
+							block = true;
+						}
 					}
 
 					if (lobby.onlyGenre) {
 						if (!beatmap.genre.equalsIgnoreCase(lobby.genre)) {
-							if (!block){
-							//SendMessage(lobby.channel, Sender + "This lobby is set to only play "
-							//		+ lobby.genres[Integer.valueOf(lobby.genre)] + " genre!");
-							block = true;
+							if (!block) {
+								// SendMessage(lobby.channel, Sender + "This
+								// lobby is set to only play "
+								// + lobby.genres[Integer.valueOf(lobby.genre)]
+								// + " genre!");
+								block = true;
 							}
 						}
 					}
-					if (!block){
-					request.beatmaps.put(beatmap.beatmap_id, beatmap);
-					request.bids.add(obj.getInt("beatmap_id"));
+					if (!block) {
+						request.beatmaps.put(beatmap.beatmap_id, beatmap);
+						request.bids.add(obj.getInt("beatmap_id"));
 					}
 				}
 				if (request.bids.size() == 0) {
@@ -679,9 +708,11 @@ public class IRCClient {
 					SendMessage(lobby.channel,
 							Sender + " Please pick one of the following difficulties using !select [number]");
 					for (int i = 0; i < request.bids.size(); i++) {
-						
+
 						SendMessage(lobby.channel,
-								"[" + i + "] " + "[https://osu.ppy.sh/b/"+request.beatmaps.get(request.bids.get(i)).beatmap_id+" "+request.beatmaps.get(request.bids.get(i)).difficulty_name + "] - "
+								"[" + i + "] " + "[https://osu.ppy.sh/b/"
+										+ request.beatmaps.get(request.bids.get(i)).beatmap_id + " "
+										+ request.beatmaps.get(request.bids.get(i)).difficulty_name + "] - "
 										+ round(request.beatmaps.get(request.bids.get(i)).difficulty, 2) + "*");
 					}
 				}
@@ -750,8 +781,8 @@ public class IRCClient {
 		for (int i = 0; i < 16; i++) {
 			if (lobby.slots.get(i) != null) {
 				if (lobby.slots.get(i).playerid != 0) {
-					for (int id : lobby.voteStart) {
-						if (id == lobby.slots.get(i).playerid) {
+					for (String string : lobby.voteStart) {
+						if (string.equalsIgnoreCase(lobby.slots.get(i).name)) {
 							ready++;
 						}
 					}
@@ -769,7 +800,7 @@ public class IRCClient {
 			start(lobby);
 		}
 		if (ready / players < 0.75) {
-			SendMessage(lobby.channel, ready + "/" + round(players * 0.75, 2)
+			SendMessage(lobby.channel, ready + "/" + (int) (round(players * 0.75, 2))
 					+ " votes to start the game. Please do !ready (or !r) if you're ready.");
 		}
 		lobby.timer.resetTimer();
@@ -794,12 +825,27 @@ public class IRCClient {
 			lobby.beatmapPlayed.add(next);
 		} else {
 			lobby.currentBeatmap = null;
-			SendMessage(lobby.channel, "There are no more beatmaps in queue!");
+			SendMessage(lobby.channel, "There are no more beatmaps in queue! Selecting the oldest map played");
+			Beatmap lastest = lobby.beatmapPlayed.poll();
+			if (lastest != null) {
+				SendMessage(lobby.channel, "!mp map " + lastest.beatmap_id);
+				lobby.currentBeatmap = lastest.beatmap_id;
+				lobby.currentBeatmapAuthor = lastest.artist;
+				lobby.currentBeatmapName = lastest.title;
+				lobby.timer.continueTimer();
+				lobby.beatmapPlayed.add(lastest);
+			}else{
+				lobby.currentBeatmap = null;
+				SendMessage(lobby.channel, "Played Queue is Empty. Please add some maps ;(");
+			}
+			
 		}
 	}
 
 	public void PrivateMessage(String target, String sender, String message) {
 		System.out.println(sender + ": " + message);
+		if (sender.equalsIgnoreCase(user))
+			return;
 		message = message.trim();
 		if (message.startsWith("!")) {
 			message = message.substring(1);
@@ -832,7 +878,7 @@ public class IRCClient {
 					}
 					int moveMe = Integer.valueOf(matchMove.group(1));
 
-					int i=0;
+					int i = 0;
 					for (Lobby lobby : Lobbies.values()) {
 						i++;
 						if (i == moveMe) {
@@ -909,7 +955,7 @@ public class IRCClient {
 			HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
 			String ranked = "Ranked";
 			String modes = lobby.type;
-			if (lobby.Graveyard == 1) {
+			if (lobby.status == 1) {
 
 			}
 
