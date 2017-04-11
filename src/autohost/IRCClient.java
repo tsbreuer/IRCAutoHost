@@ -238,7 +238,9 @@ public class IRCClient {
 
 			// Slot info on players... generally should be empty on start.. but
 			// who knows.
-			Pattern slot = Pattern.compile("Slot: (\\d+) (.+) \\(https://osu.ppy.sh/u/(\\d+)\\) (.+)");
+			//:Slot 1  Ready     https://osu.ppy.sh/u/711080 HyPeX           
+			//:Slot 2  Not Ready https://osu.ppy.sh/u/6435456 Saerph   
+			Pattern slot = Pattern.compile("Slot (\\d+) (.+) \\(https://osu.ppy.sh/u/(\\d+)\\) (.+)");
 			Matcher sM = slot.matcher(message);
 			if (sM.matches()) {
 				int slotN = Integer.valueOf(sM.group(1));
@@ -315,7 +317,8 @@ public class IRCClient {
 			}
 
 			if (message.equalsIgnoreCase("All players are ready")) {
-				SendMessage(lobby.channel, "!mp start");
+				SendMessage(lobby.channel, "All players are ready! starting...");
+				SendMessage(lobby.channel, "!mp start 5");
 				lobby.timer.stopTimer();
 			}
 
@@ -511,7 +514,7 @@ public class IRCClient {
 			} else if (args[0].equalsIgnoreCase("maxdiff")) {
 				for (int ID : lobby.OPs) {
 					if (ID == (getId(Sender))) {
-						Pattern maxdiff = Pattern.compile("maxdiff (\\d+)");
+						Pattern maxdiff = Pattern.compile("maxdiff (\\d+(?:\\.\\d+)?)");
 						Matcher diffM = maxdiff.matcher(message);
 						if (diffM.matches()) {
 							lobby.maxDifficulty = Double.valueOf(diffM.group(1));
@@ -527,6 +530,12 @@ public class IRCClient {
 					}
 				}
 				
+			} else if (args[0].equalsIgnoreCase("wait")) {
+					Boolean extended = lobby.timer.extendTimer();
+					if (extended)
+						SendMessage(lobby.channel, "Timer extended by 1 minute.");
+					else
+						SendMessage(lobby.channel, "Timer was already extended.");
 			} else if (args[0].equalsIgnoreCase("lobby")) {
 				for (int ID : lobby.OPs) {
 					if (ID == (getId(Sender))) {
@@ -535,6 +544,12 @@ public class IRCClient {
 						if (settingMatcher.matches()){
 							
 						}
+					}
+				}
+			} else if (args[0].equalsIgnoreCase("start")) {
+				for (int ID : lobby.OPs) {
+					if (ID == (getId(Sender))) {
+							tryStart(lobby);
 					}
 				}
 			} else if (args[0].equalsIgnoreCase("kick")) {
@@ -582,7 +597,7 @@ public class IRCClient {
 			} else if (args[0].equalsIgnoreCase("mindiff")) {
 				for (int ID : lobby.OPs) {
 					if (ID == (getId(Sender))) {
-						Pattern maxdiff = Pattern.compile("mindiff (\\d+)");
+						Pattern maxdiff = Pattern.compile("mindiff (.+)");
 						Matcher diffM = maxdiff.matcher(message);
 						if (diffM.matches()) {
 							lobby.minDifficulty = Double.valueOf(diffM.group(1));
@@ -781,8 +796,15 @@ public class IRCClient {
 		for (int i = 0; i < 16; i++) {
 			if (lobby.slots.get(i) != null) {
 				if (lobby.slots.get(i).playerid != 0) {
+					Boolean voted = false;
 					for (String string : lobby.voteStart) {
 						if (string.equalsIgnoreCase(lobby.slots.get(i).name)) {
+							ready++;
+							voted=true;
+						}
+					}
+					if (!voted){
+						if (lobby.slots.get(i).status.equalsIgnoreCase("Ready")){
 							ready++;
 						}
 					}
@@ -795,12 +817,12 @@ public class IRCClient {
 			return;
 		}
 
-		if (ready / players >= 0.75) {
+		if (ready >= round (players * 0.6,0)) {
 			SendMessage(lobby.channel, ready + "/" + players + " have voted to start the game, starting.");
 			start(lobby);
 		}
-		if (ready / players < 0.75) {
-			SendMessage(lobby.channel, ready + "/" + (int) (round(players * 0.75, 2))
+		if (ready < round (players * 0.6,0)) {
+			SendMessage(lobby.channel, ready + "/" + (int) (round(players * 0.75, 0))
 					+ " votes to start the game. Please do !ready (or !r) if you're ready.");
 		}
 		lobby.timer.resetTimer();

@@ -60,18 +60,20 @@ public class TimerThread extends Thread {
 			long min1mark = startTime - 1 * 60 * 1000;
 			long sec10mark = startTime - 10 * 1000;
 			if (currTime >= min3mark && prevTime < min3mark) {
-				sendMessage("Starting in 3 minutes.");
+				sendMessage("Starting in 3 minutes. Please use !r or !ready if you're ready to start.");
 			}
 			if (currTime >= min2mark && prevTime < min2mark) {
-				sendMessage("Starting in 2 minutes.");
+				sendMessage("Starting in 2 minutes. Please use !r or !ready if you're ready to start.");
 			}
 			if (currTime >= min1mark && prevTime < min1mark) {
-				sendMessage("Starting in 1 minute.");
+				sendMessage("Starting in 1 minute. Please use !r or !ready if you're ready to start.");
 			}
 			if (currTime >= sec10mark && prevTime < sec10mark) {
+				sendMessage("!mp settings");
 				sendMessage("Starting in 10 seconds.");
+				
 			}
-			if (currTime >= startTime && prevTime <= startTime) {
+			if (currTime >= startTime && prevTime <= startTime) {			
 				client.tryStart(lobby);
 			}
 			try {
