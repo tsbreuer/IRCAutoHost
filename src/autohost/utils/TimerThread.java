@@ -66,7 +66,7 @@ public class TimerThread extends Thread {
 				sendMessage("Starting in 2 minutes. Please use !r or !ready if you're ready to start.");
 			}
 			if (currTime >= min1mark && prevTime < min1mark) {
-				sendMessage("Starting in 1 minute. Please use !r or !ready if you're ready to start.");
+				sendMessage("Starting in 1 minute. Please use !r or !ready if you're ready to start. If you need more time, do !wait.");
 			}
 			if (currTime >= sec10mark && prevTime < sec10mark) {
 				sendMessage("!mp settings");

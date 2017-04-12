@@ -456,7 +456,7 @@ public class IRCClient {
 					SendMessage(Sender, "The lobby is currently playing, you cant vote for starting right now.");
 					return;
 				}
-				if (lobby.voteStart.contains(getId(Sender))) {
+				if (lobby.votestarted(Sender)) {
 					SendMessage(Sender, "You already voted for starting!");
 				} else {
 					lobby.voteStart.add(Sender);
@@ -471,7 +471,7 @@ public class IRCClient {
 					SendMessage(Sender, "The lobby is currently playing, you cant vote for skipping right now.");
 					return;
 				}
-				if (lobby.voteskip.contains(Sender)) {
+				if (lobby.votedskip(Sender)) {
 					SendMessage(Sender, "You already voted for skipping!");
 				} else {
 					lobby.voteskip.add(Sender);
@@ -487,7 +487,7 @@ public class IRCClient {
 						"This is an in-development IRC version of autohost developed by HyPeX. Do !commands to know them ;)");
 			} else if (args[0].equalsIgnoreCase("commands")) {
 				SendMessage(lobby.channel,
-						"C.List: !add [beatmap] || !ready (or !r) || !skip (or !s) || !queue (or !playlist)");
+						"C.List: !add [beatmap] || !ready (or !r) || !skip (or !s) || !queue (or !playlist) || !ver");
 			} else if (args[0].equalsIgnoreCase("playlist") || args[0].equalsIgnoreCase("queue")) {
 				String playlist = "Queue: " + lobby.beatmapQueue.size() + " || ";
 				for (Beatmap bm : lobby.beatmapQueue) {
@@ -530,6 +530,9 @@ public class IRCClient {
 					}
 				}
 				
+			} else if (args[0].equalsIgnoreCase("ver")) {
+				SendMessage(lobby.channel, "Bot version is 2.3");
+			
 			} else if (args[0].equalsIgnoreCase("wait")) {
 					Boolean extended = lobby.timer.extendTimer();
 					if (extended)
@@ -825,14 +828,25 @@ public class IRCClient {
 			SendMessage(lobby.channel, ready + "/" + (int) (round(players * 0.75, 0))
 					+ " votes to start the game. Please do !ready (or !r) if you're ready.");
 		}
+		if (players == 0){
+			nextbeatmap(lobby);
+		}
 		lobby.timer.resetTimer();
+		
 	}
 
 	public void start(Lobby lobby) {
 		SendMessage(lobby.channel, "!mp start 5");
 		lobby.timer.stopTimer();
+		lobby.Playing = true;
 	}
-
+	
+	public String[] getPeppyPoints(int beatmapid){
+		String[] str = new String[3];
+			
+		return str;
+	}
+	
 	public void nextbeatmap(Lobby lobby) {
 		lobby.voteskip.clear();
 		lobby.voteStart.clear();
@@ -844,12 +858,14 @@ public class IRCClient {
 			lobby.currentBeatmapAuthor = next.artist;
 			lobby.currentBeatmapName = next.title;
 			lobby.timer.continueTimer();
+			SendMessage(lobby.channel, "Up next: [https://osu.ppy.sh/b/"+next.beatmap_id+" "+next.artist+" - "+next.title+"] ["+round(next.difficulty,2)+"*]");
 			lobby.beatmapPlayed.add(next);
 		} else {
 			lobby.currentBeatmap = null;
 			SendMessage(lobby.channel, "There are no more beatmaps in queue! Selecting the oldest map played");
 			Beatmap lastest = lobby.beatmapPlayed.poll();
 			if (lastest != null) {
+				SendMessage(lobby.channel, "Up next: [https://osu.ppy.sh/b/"+lastest.beatmap_id+" "+lastest.artist+" - "+lastest.title+"] ["+round(lastest.difficulty,2)+"*]");
 				SendMessage(lobby.channel, "!mp map " + lastest.beatmap_id);
 				lobby.currentBeatmap = lastest.beatmap_id;
 				lobby.currentBeatmapAuthor = lastest.artist;

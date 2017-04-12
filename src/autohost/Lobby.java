@@ -80,4 +80,20 @@ public class Lobby {
 		this.channel = channel;
 	}
 	
+	public Boolean votestarted(String user){
+		Boolean didvote = false;
+		for (String player : voteStart){
+			if (user.equalsIgnoreCase(player))
+				didvote = true;
+		}
+		return didvote;
+	}
+	public Boolean votedskip(String user){
+		Boolean didvote = false;
+		for (String player : voteskip){
+			if (user.equalsIgnoreCase(player))
+				didvote = true;
+		}
+		return didvote;
+	}
 }
