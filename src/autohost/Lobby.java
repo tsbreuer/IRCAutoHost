@@ -29,8 +29,11 @@ public class Lobby {
 	public Integer currentBeatmap = 0;
 	public Queue<Beatmap> beatmapQueue = new LinkedList<>();
 	public Queue<Beatmap> beatmapPlayed = new LinkedList<>();
+	public Boolean DoubleTime = false;
+	public Boolean HalfTime = false;
 
 	public Map<Integer, Slot> slots = new HashMap<>();
+	public Map<Integer, lt.ekgame.beatmap_analyzer.Beatmap> beatmaps = new HashMap<>();
 	public Map<String, Request> requests = new HashMap<>();
 	public Map<Integer, String> scores = new HashMap<>();
 	public String[] genres = new String[]{ "any" , "unspecified", "video game", "anime", "rock", "pop", "other", "novelty", "error", "hip hop", "electronic"};
@@ -75,6 +78,7 @@ public class Lobby {
 	public Boolean onlyDifficulty = true; // Lock lobby to difficulty
 	public Double minDifficulty = (double) 4;
 	public Double maxDifficulty = (double) 5;
+	public Integer previousBeatmap;
 
 	public Lobby(String channel) {
 		this.channel = channel;

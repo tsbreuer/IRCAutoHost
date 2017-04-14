@@ -32,7 +32,7 @@ public class Beatmap {
 	public double difficulty_od;
 	public double difficulty_ar;
 	public double difficulty_hp;
-	public int bpm;
+	public double bpm;
 	public int play_count;
 	public int graveyard;
 	public Boolean ignored;
@@ -55,7 +55,7 @@ public class Beatmap {
 		this.mapper = obj.getString("creator");
 		this.beatmap_id = obj.getInt("beatmap_id");
 		this.beatmapset_id = obj.getInt("beatmapset_id");
-		this.bpm = obj.getInt("bpm");
+		this.bpm = obj.getDouble("bpm");
 		this.difficulty_name = obj.getString("version");
 		this.difficulty = obj.getDouble("difficultyrating");
 		this.difficulty_ar = obj.getDouble("diff_approach");
