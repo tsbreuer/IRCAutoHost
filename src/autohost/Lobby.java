@@ -22,6 +22,7 @@ public class Lobby {
 	public TimerThread timer;
 	public String name;
 
+	public String Password = "";
 	public Boolean Playing = false;
 	public Integer mpID;
 	public String currentBeatmapAuthor = "HyPeX";
