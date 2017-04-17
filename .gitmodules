@@ -1,0 +1,3 @@
+[submodule "beatmap-analyzer"]
+	path = beatmap-analyzer
+	url = https://github.com/ekgame/beatmap-analyzer.git
