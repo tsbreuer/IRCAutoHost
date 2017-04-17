@@ -211,16 +211,15 @@ public class IRCClient {
 
 			// Room name and ID, important (?)
 			// Room name: test, History: https://osu.ppy.sh/mp/31026456
-			// Room name: AutoHost 5-6* || !info || By HyPeX, History: https://osu.ppy.sh/mp/32487590
-			Pattern roomName = Pattern.compile("Room name: AutoHost (.+)\\-(.+)\\* \\|\\| !info \\|\\| By HyPeX, History: https://osu.ppy.sh/mp/(.+)");
+			// Room name: AutoHost 5-6* || !info || By HyPeX, History:
+			// https://osu.ppy.sh/mp/32487590
+			Pattern roomName = Pattern.compile("Room name: (.+), History: https://osu.ppy.sh/mp/(.+)");
 			Matcher rNM = roomName.matcher(message);
 
 			if (rNM.matches()) {
-				String name = "AutoHost "+rNM.group(1)+"-"+rNM.group(2)+"* || !info || By HyPeX";
+				String name = rNM.group(1);
 				System.out.println("New room name! " + name);
-				lobby.name =name;
-				lobby.maxDifficulty = Double.valueOf(rNM.group(2));
-				lobby.minDifficulty = Double.valueOf(rNM.group(1));
+				lobby.name = name;
 				lobby.mpID = Integer.valueOf(rNM.group(2));
 			}
 
@@ -255,19 +254,17 @@ public class IRCClient {
 			Pattern password = Pattern.compile("(.+) the match password");
 			Matcher passmatch = password.matcher(message);
 			if (passmatch.matches()) {
-				if (passmatch.group(1).equals("Enabled")){
-					if (lobby.Password.equalsIgnoreCase("")){
+				if (passmatch.group(1).equals("Enabled")) {
+					if (lobby.Password.equalsIgnoreCase("")) {
 						SendMessage(lobby.channel, "!mp password");
 					}
-				}
-				else
-				{
-					if (!lobby.Password.equalsIgnoreCase("")){
+				} else {
+					if (!lobby.Password.equalsIgnoreCase("")) {
 						SendMessage(lobby.channel, "!mp password");
 					}
 				}
 			}
-			
+
 			// Slot info on players... generally should be empty on start.. but
 			// who knows.
 			// :Slot 1 Ready https://osu.ppy.sh/u/711080 HyPeX
@@ -637,20 +634,16 @@ public class IRCClient {
 					if (ID == (getId(Sender))) {
 						Pattern pw = Pattern.compile("password (.+)?");
 						Matcher pwmatch = pw.matcher(message);
-						if (pwmatch.matches()){
-							if (pwmatch.groupCount()==1){
-								if (pwmatch.group(1).equalsIgnoreCase("reset")){
+						if (pwmatch.matches()) {
+							if (pwmatch.groupCount() == 1) {
+								if (pwmatch.group(1).equalsIgnoreCase("reset")) {
 									lobby.Password = "";
-								}
-								else
-								{
+								} else {
 									lobby.Password = pwmatch.group(1);
 								}
 								SendMessage(lobby.channel, "!mp password");
-							}
-							else
-							{
-								SendMessage(lobby.channel, "Current password is "+lobby.Password);
+							} else {
+								SendMessage(lobby.channel, "Current password is " + lobby.Password);
 							}
 						}
 					}
@@ -1086,11 +1079,13 @@ public class IRCClient {
 					String password = "";
 					if (lobby.Password.equalsIgnoreCase(""))
 						password = "Password: Disabled";
-						else
+					else
 						password = "Password: Enabled";
-						
-					SendMessage(sender, "Lobby [" + i + "] || Name: " + lobby.name + " || Stars: " + lobby.minDifficulty
-							+ "* - " + lobby.maxDifficulty + "* || Slots: [" + lobby.slots.size() + "/16] || "+password);
+
+					SendMessage(sender,
+							"Lobby [" + i + "] || Name: " + lobby.name + " || Stars: " + lobby.minDifficulty + "* - "
+									+ lobby.maxDifficulty + "* || Slots: [" + lobby.slots.size() + "/16] || "
+									+ password);
 				}
 
 				return;
@@ -1120,14 +1115,33 @@ public class IRCClient {
 
 			} else if (args[0].equalsIgnoreCase("moveme")) {
 				if (args.length >= 2) {
-					Pattern moveme = Pattern.compile("moveme (\\d+) (.+)?");
+					Pattern moveme = Pattern.compile("moveme (\\d+)");
 					Matcher matchMove = moveme.matcher(message);
 					if (!matchMove.matches()) {
-						SendMessage(sender, "Wrong format, please use !moveme [lobby number provided by help]");
-						return;
+						Pattern movemePass = Pattern.compile("moveme (.+)");
+						Matcher matchPW = movemePass.matcher(message);
+						if (!matchPW.matches()) {
+							SendMessage(sender, "Wrong format, please use !moveme [lobby number provided by help]");
+							return;
+						}
+						else{
+							for (Lobby lobby : Lobbies.values()) {								
+								if (lobby.Password.equals(matchPW.group(1))){
+									if (lobby.slots.size() < lobby.LobbySize){
+										SendMessage(lobby.channel, "!mp move "+sender);
+									}
+									else
+										SendMessage(sender, "Lobby is full, try again later ;)");
+									
+									return;
+								}
+								
+							}
+							SendMessage(sender, "No lobby matched your password.");
+						}
 					}
+					if (matchMove.matches()){
 					int moveMe = Integer.valueOf(matchMove.group(1));
-
 					int i = 0;
 					for (Lobby lobby : Lobbies.values()) {
 						i++;
@@ -1152,24 +1166,24 @@ public class IRCClient {
 					}
 					return;
 				}
+				}
 			} else if (args[0].equalsIgnoreCase("createroom")) {
 				for (int ID : configuration.ops) {
 					if (ID == (getId(sender))) {
-						if (args.length <= 2) {
-							SendMessage(sender, "Please include all arguments. Usage: !createroom <mindiff> <maxdiff>");
+						if (args.length <= 1) {
+							SendMessage(sender, "Please include all arguments. Usage: !createroom <name>");
 							return;
 						}
-						Pattern roomNamePattern = Pattern.compile("createroom (.+) (.+)");
+						Pattern roomNamePattern = Pattern.compile("createroom (.+)");
 						Matcher roomNameMatcher = roomNamePattern.matcher(message);
 						if (roomNameMatcher.matches()) {
 
-							String roomName = "AutoHost " + roomNameMatcher.group(1) + "-" + roomNameMatcher.group(2)
-									+ "* || !info || By HyPeX";
+							String roomName = roomNameMatcher.group(1);
 							SendMessage("BanchoBot", "!mp make " + roomName);
 							SendMessage(sender,
 									"Creating room, please wait 1 second and pm me !help to ask for a move");
 						} else {
-							SendMessage(sender, "Incorrect Syntax. Please use !createroom <mindiff> <maxdiff>");
+							SendMessage(sender, "Incorrect Syntax. Please use !createroom <name>");
 						}
 						return;
 					}
