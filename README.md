@@ -12,4 +12,8 @@ I've also got my last final tomorrow, so thats a reason for not working in the p
 Update #2: After getting my own IRC working, i'm now mapping all IRC data and then i'm gonna work on the features AutoHost had.
 
 ---------------
+
+Update #3: Bot is quite reliable working now. Javaguru (Kabaru) will now do a code refactoring and small API for a web interface, at which point i'll finish fixing the last bugs and then set up the public usability.
+
+---------------
 This is a bot to be run only by me on AutoHost account and its commands / lobby usage will be public. This github is up solely for the purpose of showing the code for anyone wondering and to use as an example for other projects. Big shoutout and thanks for @ek and @ThePooN and the whole #programming channel from osu!soup discord
