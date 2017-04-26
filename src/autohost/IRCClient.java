@@ -86,6 +86,10 @@ public class IRCClient {
 		this.RateLimit = config.rate;
 		// Mods definition, ignore
 		// Connect
+		AttemptConnection();
+	}
+
+	public void AttemptConnection() throws UnknownHostException, IOException{
 		connect();
 		try {
 			register();
@@ -94,7 +98,6 @@ public class IRCClient {
 		}
 
 	}
-
 	public void connect() throws UnknownHostException, IOException {
 		// Connect to the server
 		connectSocket = new Socket(server, port);
@@ -157,6 +160,7 @@ public class IRCClient {
 		lobby.type = "0";
 		lobby.status = 1;
 		lobby.name = name;
+	
 		lobby.maxDifficulty = maxdiff;
 		lobby.minDifficulty = mindiff;
 		lobby.OPLobby = isOP;
@@ -169,15 +173,19 @@ public class IRCClient {
 	public void newLobby(String lobbyChannel){
 		Lobby lobby = LobbyCreation.poll();
 		if (lobby != null){
+			lobby.channel = lobbyChannel;
 			Lobbies.put(lobbyChannel, lobby);
 			SendMessage(lobbyChannel, "!mp settings");
 			SendMessage(lobbyChannel, "!mp unlock");
 			SendMessage(lobbyChannel, "!mp password");
 			SendMessage(lobbyChannel, "!mp mods Freemod");
+			SendMessage(lobbyChannel, "!mp move "+lobby.creatorName);
+			
 		}
 		else
 		{
 		lobby = new Lobby(lobbyChannel);
+		lobby.channel = lobbyChannel;
 		Lobbies.put(lobbyChannel, lobby);
 		lobby.slots.clear();
 		SendMessage(lobbyChannel, "!mp settings");
@@ -1172,6 +1180,16 @@ public class IRCClient {
 						DeadLobbies.remove(lobby);
 						SendMessage(sender, "Lobby dropped. You're now able to create a new one!");
 						return;
+					}
+				}
+			} else if (args[0].equalsIgnoreCase("reconnection")) {
+				for (int ID : configuration.ops) {			
+					if (ID == (getId(sender))) {
+						try {
+							AttemptConnection();
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
 					}
 				}
 			} else if (args[0].equalsIgnoreCase("moveme")) {

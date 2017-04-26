@@ -12,7 +12,7 @@ import autohost.utils.Slot;
 import autohost.utils.TimerThread;
 
 public class Lobby {
-	public String channel;
+	public String channel = "";
 	public Integer LobbySize = 16;
 	public List<Integer> OPs = new LinkedList<>();;
 
