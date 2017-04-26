@@ -21,10 +21,16 @@ public class Lobby {
 	
 	public TimerThread timer;
 	public String name;
+	public Boolean OPLobby = false;
+	public String creatorName;
 
+	
 	public String Password = "";
 	public Boolean Playing = false;
 	public Integer mpID;
+	
+
+	
 	public String currentBeatmapAuthor = "HyPeX";
 	public String currentBeatmapName = "Some random shit";
 	public Integer currentBeatmap = 0;
@@ -85,6 +91,10 @@ public class Lobby {
 		this.channel = channel;
 	}
 	
+	public Lobby() {
+		
+	}
+
 	public Boolean votestarted(String user){
 		Boolean didvote = false;
 		for (String player : voteStart){
