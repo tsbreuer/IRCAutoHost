@@ -14,10 +14,10 @@ import autohost.utils.TimerThread;
 public class Lobby {
 	public String channel = "";
 	public Integer LobbySize = 16;
-	public List<Integer> OPs = new LinkedList<>();;
+	public List<Integer> OPs = new LinkedList<>();
 
 	public List<String> voteStart = new LinkedList<>();
-	public List<String> voteskip  = new LinkedList<>();;
+	public List<String> voteskip  = new LinkedList<>();
 	
 	public TimerThread timer;
 	public String name;
@@ -30,21 +30,30 @@ public class Lobby {
 	public Integer mpID;
 	
 
+	public Boolean rejoined = false; 
 	
 	public String currentBeatmapAuthor = "HyPeX";
 	public String currentBeatmapName = "Some random shit";
 	public Integer currentBeatmap = 0;
+	
+	public Double maxAR =  0.0;
+	
+	
 	public Queue<Beatmap> beatmapQueue = new LinkedList<>();
 	public Queue<Beatmap> beatmapPlayed = new LinkedList<>();
 	public Boolean DoubleTime = false;
+	public Boolean NightCore = false;
 	public Boolean HalfTime = false;
 
 	public Map<Integer, Slot> slots = new HashMap<>();
 	public Map<Integer, lt.ekgame.beatmap_analyzer.Beatmap> beatmaps = new HashMap<>();
 	public Map<String, Request> requests = new HashMap<>();
-	public Map<Integer, String> scores = new HashMap<>();
-	public String[] genres = new String[]{ "any" , "unspecified", "video game", "anime", "rock", "pop", "other", "novelty", "error", "hip hop", "electronic"};
 	
+	public Map<String, Integer> afk = new HashMap<>();
+	public Map<String, Integer> scores = new HashMap<>();
+
+	public String[] genres = new String[]{ "any" , "unspecified", "video game", "anime", "rock", "pop", "other", "novelty", "error", "hip hop", "electronic"};
+	public Map<Integer, Boolean> statusTypes =  new HashMap<>();
 	
 	/* 
 	 * Lobby Specific Settings
@@ -58,13 +67,13 @@ public class Lobby {
 	
 	public Integer status; // 4 = loved, 3 = qualified, 2 = approved, 1 = ranked, 0 = pending, -1 = WIP, -2 = graveyard
 
-	public Boolean loved;
-	public Boolean qualified;
-	public Boolean approved;
-	public Boolean ranked;
-	public Boolean pending;
-	public Boolean WIP;
-	public Boolean graveyard;
+	public Boolean loved = true;
+	public Boolean qualified = true;
+	public Boolean approved = true;
+	public Boolean ranked = true;
+	public Boolean pending = false;
+	public Boolean WIP = false;
+	public Boolean graveyard = false;
 	
 	public Boolean onlyType = true; // Lock lobby to type
 	public String type; // 0 = osu!, 1 = Taiko, 2 = CtB, 3 = osu!mania
@@ -87,12 +96,27 @@ public class Lobby {
 	public Double maxDifficulty = (double) 5;
 	public Integer previousBeatmap;
 
+	
 	public Lobby(String channel) {
 		this.channel = channel;
+		this.statusTypes.put(4, loved);
+		this.statusTypes.put(3, qualified);
+		this.statusTypes.put(2, approved);
+		this.statusTypes.put(1, ranked);
+		this.statusTypes.put(0, pending);
+		this.statusTypes.put(-1, WIP);
+		this.statusTypes.put(-2, graveyard);
 	}
 	
 	public Lobby() {
-		
+		// 4 = loved, 3 = qualified, 2 = approved, 1 = ranked, 0 = pending, -1 = WIP, -2 = graveyard
+		this.statusTypes.put(4, loved);
+		this.statusTypes.put(3, qualified);
+		this.statusTypes.put(2, approved);
+		this.statusTypes.put(1, ranked);
+		this.statusTypes.put(0, pending);
+		this.statusTypes.put(-1, WIP);
+		this.statusTypes.put(-2, graveyard);
 	}
 
 	public Boolean votestarted(String user){
