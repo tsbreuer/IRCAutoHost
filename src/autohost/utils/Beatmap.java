@@ -70,6 +70,12 @@ public class Beatmap {
 		this.tags = obj.getString("tags").split(" ");
 		this.play_count = obj.getInt("playcount");
 		this.pass_count = obj.getInt("passcount");
-		this.maxcombo = obj.getInt("max_combo");
+		try {
+			this.maxcombo = obj.getInt("max_combo");
+		} catch (JSONException e) {
+			if (!this.gamemode.equalsIgnoreCase("3") || !this.gamemode.equalsIgnoreCase("1"))
+				e.printStackTrace();
+			this.maxcombo = 0;
+		}
 	};
 }

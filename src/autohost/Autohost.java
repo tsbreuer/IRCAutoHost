@@ -2,38 +2,66 @@ package autohost;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 
 import autohost.RateLimiter;
 import autohost.utils.RateLimiterThread;
+import autohost.utils.ReconnectTimer;
+
 import java.util.regex.*;
 
 
 public class Autohost  {
 	
-	Config config;
 	Socket socket;
 	BufferedWriter writer;
 	BufferedReader reader;
+	public static Autohost AutoHost;
+	public Config config;
 	List<Lobby> Lobbies = new ArrayList<>();
 	public List<RateLimiter> limiters = new ArrayList<>();
+	public IRCClient irc;
+	public static IRCClient client;
+	public ReconnectTimer reconnection;
 	//private RateLimiterThread rate;
+	private ReconnectTimer ReconnectTimer;
 	
     public static void main(String[] args) throws Exception {
-    	Config config = new Config("config.properties");
-    	IRCClient irc = new IRCClient(config);
-    	
+    	//reconnection = new ReconnectTimer(irc);
+    	AutoHost = new Autohost();
     }
-}
-	/*
-	public Autohost (){
-		setName(Config.authName);	
-		
+    
+    public Autohost() throws FileNotFoundException, IOException{
+    	this.config = new Config("config.properties");
+    	this.irc = new IRCClient(this,config);
+    	this.ReconnectTimer = new ReconnectTimer(this.irc,this);
+    }
+    
+	public void ReconnectAutoHost(){
+		try {
+			this.irc.stopIRC();
+			this.irc = new IRCClient(this,config, irc.Lobbies, irc.LobbyCreation,irc.DeadLobbies,irc.usernames);
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		catch (NullPointerException e){
+			e.printStackTrace();
+		}
 	}
+	
+}
+
+	/*
+
 	
 	@Override
 	public void onMessage(String channel, String sender, String login, String hostname, String message){	

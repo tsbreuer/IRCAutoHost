@@ -62,28 +62,59 @@ public class IRCClient {
 	private static int port = 6667;
 	private static String user;
 	private static String password;
-	private static Socket connectSocket;
-	private static PrintStream out;
+	public Socket connectSocket;
+	private PrintStream out;
 	Map<String, Lobby> Lobbies = new HashMap<>();
 	public Queue<Lobby> LobbyCreation = new LinkedList<>();
 	public Queue<Lobby> DeadLobbies = new LinkedList<>();
 	public List<RateLimiter> limiters = new ArrayList<>();
 	// private RateLimiterThread rate;
-	private Thread inputThread; // for debugging
+
+	public Autohost autohost;
+	public InputDumper inputThread; // for debugging
 	private RateLimiterThread rate;
 	private int RateLimit;
 	Config configuration;
 	public Map<Integer, String> usernames = new HashMap<>();
 
+	/// This is the reconnection data, just info i store for checking wether bancho went RIP
+	public Boolean isReconnecting = false;
+	public long LastConnection = System.currentTimeMillis();
+	public long LastRequested = System.currentTimeMillis();
+	public String LastMessagePING = "";
+	
+	// Main code
+	
 	@SuppressWarnings("static-access")
-	public IRCClient(Config config) throws UnknownHostException, IOException {
+	public IRCClient(Autohost autohost, Config config) throws UnknownHostException, IOException {
 		// Define all settings. Meh.
+		this.autohost = autohost;
 		this.configuration = config;
 		this.server = config.server;
 		this.port = 6667;
 		this.user = config.user;
 		this.password = config.password;
 		this.RateLimit = config.rate;
+		// Mods definition, ignore
+		// Connect
+		AttemptConnection();
+	}
+
+	public IRCClient(Autohost autohost, Config config, Map<String, Lobby> Lobbies, Queue<Lobby> LobbyCreation, Queue<Lobby> DeadLobbies, Map<Integer, String> usernames) throws UnknownHostException, IOException {
+		// Define all settings. Meh.
+		this.autohost = autohost;
+		this.configuration = config;
+		this.server = config.server;
+		this.port = 6667;
+		this.user = config.user;
+		this.password = config.password;
+		this.RateLimit = config.rate;
+		this.isReconnecting = true;
+		System.out.println("Reconnect lobbies: "+Lobbies.size());
+		this.Lobbies = Lobbies;
+		this.DeadLobbies = DeadLobbies;
+		this.usernames = usernames;
+		this.LobbyCreation = LobbyCreation;
 		// Mods definition, ignore
 		// Connect
 		AttemptConnection();
@@ -105,17 +136,41 @@ public class IRCClient {
 		out = new PrintStream(connectSocket.getOutputStream());
 
 		// for debugging
-		inputThread = new InputDumper(connectSocket.getInputStream(), this);
+		inputThread = new InputDumper(connectSocket.getInputStream(), this, this.autohost);
 
 		inputThread.start();
 		rate = new RateLimiterThread(this, RateLimit);
 		rate.start();
 	}
 
+	public void stopIRC(){
+		try {
+			this.inputThread.stopReading();
+			this.connectSocket.close();
+			this.out.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 	public void log(String line) {
 		if (line.contains("cho@ppy.sh QUIT :") || (line.contains("PING cho.ppy.sh"))
 				|| (line.contains("PONG cho.ppy.sh"))) {
 			return;
+		}
+		
+		Pattern endOfMotd = Pattern.compile(":cho.ppy.sh 376 (.+)");
+		Matcher endofmotdmatch = endOfMotd.matcher(line);
+		if (endofmotdmatch.matches()) {
+			System.out.println("End of motd, we're connected.");
+			if (this.isReconnecting){
+				System.out.println("Lobby is from reconnection.");
+				this.isReconnecting = false;
+				for (Lobby lobby : Lobbies.values()){
+					Lobbies.remove(lobby.channel);
+					reconnectLobby(lobby);
+				}
+			}
 		}
 		System.out.println(line);
 		// :cho.ppy.sh 401 AutoHost #mp_32349656 :No such nick
@@ -167,12 +222,21 @@ public class IRCClient {
 		lobby.creatorName = creator;
 		LobbyCreation.add(lobby);
 		for (int op : configuration.ops) {
+			if (op != getId(creator))
 			lobby.OPs.add(op);
 		}
 		lobby.OPs.add(getId(creator));
 		SendMessage("BanchoBot", "!mp make " + name);
 	}
 
+	public void reconnectLobby(Lobby lobby) {
+		lobby.slots.clear();
+		lobby.rejoined = true;
+		LobbyCreation.add(lobby);
+		Write("JOIN " + lobby.channel);
+		SendMessage("" + lobby.channel, "Bot reconnected to this lobby after connection lost");
+	}
+	
 	public void reconnectLobby(String creator, String channel, Boolean isOP) {
 		Lobby lobby = new Lobby();
 		lobby.slots.clear();
@@ -186,6 +250,7 @@ public class IRCClient {
 		lobby.rejoined = true;
 		LobbyCreation.add(lobby);
 		for (int op : configuration.ops) {
+			if (op != getId(creator))
 			lobby.OPs.add(op);
 		}
 		lobby.OPs.add(getId(creator));
@@ -741,7 +806,7 @@ public class IRCClient {
 			} else if (args[0].equalsIgnoreCase("info")) {
 				SendMessage(lobby.channel,
 						"This is an in-development IRC version of autohost developed by HyPeX. Do !commands to know them ;) [https://discord.gg/UDabf2y Discord] [Reddit Thread](https://www.reddit.com/r/osugame/comments/67u0k9/autohost_bot_is_finally_ready_for_public_usage/)");
-				
+
 			} else if (args[0].equalsIgnoreCase("commands")) {
 				SendMessage(lobby.channel,
 						"C.List: !add [beatmap] | !ready/!r | !skip/!s | !queue/!playlist | !ver | !last | !maxdiff | !mindiff | !graveyard | !clearhost | !hostme | !fav/!favorites");
@@ -794,12 +859,17 @@ public class IRCClient {
 						if (modeMatch.matches()) {
 							if (modeMatch.group(1).equalsIgnoreCase("mania")) {
 								lobby.type = "3";
-							} else if (modeMatch.group(1).equalsIgnoreCase("std")) {
+								SendMessage(lobby.channel, "This lobby is now a mania lobby");
+							} else if (modeMatch.group(1).equalsIgnoreCase("std")
+									|| modeMatch.group(1).equalsIgnoreCase("standard")) {
 								lobby.type = "0";
+								SendMessage(lobby.channel, "This lobby is now a Standard lobby");
 							} else if (modeMatch.group(1).equalsIgnoreCase("ctb")) {
 								lobby.type = "2";
+								SendMessage(lobby.channel, "This lobby is now a Catch The Beat lobby");
 							} else if (modeMatch.group(1).equalsIgnoreCase("taiko")) {
 								lobby.type = "1";
+								SendMessage(lobby.channel, "This lobby is now a Taiko lobby");
 							}
 						}
 					}
@@ -811,11 +881,17 @@ public class IRCClient {
 							lobby.graveyard = false;
 							lobby.WIP = false;
 							lobby.pending = false;
+							lobby.statusTypes.put(0, false);
+							lobby.statusTypes.put(-1, false);
+							lobby.statusTypes.put(-2, false);
 							SendMessage(lobby.channel, "Graveyard maps are now unallowed.");
 						} else {
 							lobby.graveyard = true;
 							lobby.WIP = true;
 							lobby.pending = true;
+							lobby.statusTypes.put(0, true);
+							lobby.statusTypes.put(-1, true);
+							lobby.statusTypes.put(-2, true);
 							SendMessage(lobby.channel, "Graveyard maps are now allowed.");
 						}
 						return;
@@ -1011,8 +1087,7 @@ public class IRCClient {
 	}
 
 	public void removeAFK(Lobby lobby, String player) {
-			lobby.afk.put(player, 0);
-	
+		lobby.afk.put(player, 0);
 	}
 
 	void removeLobby(Lobby lobby) {
@@ -1403,7 +1478,7 @@ public class IRCClient {
 			}
 		}
 
-		SendMessage(lobby.channel, "!mp map " + next.beatmap_id);
+		SendMessage(lobby.channel, "!mp map " + next.beatmap_id + " " + lobby.type);
 		lobby.previousBeatmap = lobby.currentBeatmap;
 		lobby.currentBeatmap = next.beatmap_id;
 		lobby.currentBeatmapAuthor = next.artist;
