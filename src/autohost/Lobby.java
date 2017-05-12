@@ -38,6 +38,7 @@ public class Lobby {
 	
 	public Double maxAR =  0.0;
 	
+	public Boolean TrueRandom = false;
 	
 	public Queue<Beatmap> beatmapQueue = new LinkedList<>();
 	public Queue<Beatmap> beatmapPlayed = new LinkedList<>();
@@ -60,6 +61,10 @@ public class Lobby {
 	 * 	These set up the lobbies to differ from other lobbies
 	 */
 	
+	// limit to X year beatamps. Why not.
+	public Boolean limitDate;
+	public int minyear;
+	public int maxyear;
 	
 	public String teamgamemode; // Team Type of the lobby. Solo? TeamVs?
 	

@@ -19,6 +19,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Random;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -77,14 +78,15 @@ public class IRCClient {
 	Config configuration;
 	public Map<Integer, String> usernames = new HashMap<>();
 
-	/// This is the reconnection data, just info i store for checking wether bancho went RIP
+	/// This is the reconnection data, just info i store for checking wether
+	/// bancho went RIP
 	public Boolean isReconnecting = false;
 	public long LastConnection = System.currentTimeMillis();
 	public long LastRequested = System.currentTimeMillis();
 	public String LastMessagePING = "";
-	
+
 	// Main code
-	
+
 	@SuppressWarnings("static-access")
 	public IRCClient(Autohost autohost, Config config) throws UnknownHostException, IOException {
 		// Define all settings. Meh.
@@ -100,7 +102,8 @@ public class IRCClient {
 		AttemptConnection();
 	}
 
-	public IRCClient(Autohost autohost, Config config, Map<String, Lobby> Lobbies, Queue<Lobby> LobbyCreation, Queue<Lobby> DeadLobbies, Map<Integer, String> usernames) throws UnknownHostException, IOException {
+	public IRCClient(Autohost autohost, Config config, Map<String, Lobby> Lobbies, Queue<Lobby> LobbyCreation,
+			Queue<Lobby> DeadLobbies, Map<Integer, String> usernames) throws UnknownHostException, IOException {
 		// Define all settings. Meh.
 		this.autohost = autohost;
 		this.configuration = config;
@@ -110,7 +113,7 @@ public class IRCClient {
 		this.password = config.password;
 		this.RateLimit = config.rate;
 		this.isReconnecting = true;
-		System.out.println("Reconnect lobbies: "+Lobbies.size());
+		System.out.println("Reconnect lobbies: " + Lobbies.size());
 		this.Lobbies = Lobbies;
 		this.DeadLobbies = DeadLobbies;
 		this.usernames = usernames;
@@ -143,34 +146,40 @@ public class IRCClient {
 		rate.start();
 	}
 
-	public void stopIRC(){
+	public void stopIRC() {
 		try {
 			this.inputThread.stopReading();
 			this.connectSocket.close();
 			this.out.close();
+
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
+
 	public void log(String line) {
 		if (line.contains("cho@ppy.sh QUIT :") || (line.contains("PING cho.ppy.sh"))
 				|| (line.contains("PONG cho.ppy.sh"))) {
 			return;
 		}
-		
+
 		Pattern endOfMotd = Pattern.compile(":cho.ppy.sh 376 (.+)");
 		Matcher endofmotdmatch = endOfMotd.matcher(line);
-		if (endofmotdmatch.matches()) {
-			System.out.println("End of motd, we're connected.");
-			if (this.isReconnecting){
-				System.out.println("Lobby is from reconnection.");
-				this.isReconnecting = false;
-				for (Lobby lobby : Lobbies.values()){
-					Lobbies.remove(lobby.channel);
-					reconnectLobby(lobby);
+		try {
+			if (endofmotdmatch.matches()) {
+				System.out.println("End of motd, we're connected.");
+				if (this.isReconnecting) {
+					System.out.println("Lobby is from reconnection.");
+					this.isReconnecting = false;
+					for (Lobby lobby : Lobbies.values()) {
+						Lobbies.remove(lobby.channel);
+						reconnectLobby(lobby);
+					}
 				}
 			}
+		} catch (ConcurrentModificationException e) {
+			e.printStackTrace();
 		}
 		System.out.println(line);
 		// :cho.ppy.sh 401 AutoHost #mp_32349656 :No such nick
@@ -223,7 +232,7 @@ public class IRCClient {
 		LobbyCreation.add(lobby);
 		for (int op : configuration.ops) {
 			if (op != getId(creator))
-			lobby.OPs.add(op);
+				lobby.OPs.add(op);
 		}
 		lobby.OPs.add(getId(creator));
 		SendMessage("BanchoBot", "!mp make " + name);
@@ -236,7 +245,7 @@ public class IRCClient {
 		Write("JOIN " + lobby.channel);
 		SendMessage("" + lobby.channel, "Bot reconnected to this lobby after connection lost");
 	}
-	
+
 	public void reconnectLobby(String creator, String channel, Boolean isOP) {
 		Lobby lobby = new Lobby();
 		lobby.slots.clear();
@@ -251,7 +260,7 @@ public class IRCClient {
 		LobbyCreation.add(lobby);
 		for (int op : configuration.ops) {
 			if (op != getId(creator))
-			lobby.OPs.add(op);
+				lobby.OPs.add(op);
 		}
 		lobby.OPs.add(getId(creator));
 		Write("JOIN #mp_" + channel);
@@ -1464,6 +1473,123 @@ public class IRCClient {
 		return bm;
 	}
 
+	public void getRandomWithinSettings(Lobby lobby, Consumer<JSONObject> callback)
+			throws URISyntaxException, ClientProtocolException, IOException {
+		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
+				.setConnectionRequestTimeout(10000).build();
+
+		Random rand = new Random();
+		double n = rand.nextDouble();
+		double number = lobby.minDifficulty + (n * (lobby.maxDifficulty - lobby.minDifficulty));
+		double mindiff = number - 0.1;
+		double maxdiff = number + 0.1;
+		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
+		// http://osusearch.com/search/?genres=Anime
+		// &languages=Japanese&statuses=Ranked
+		// &modes=Standard&star=(3.60,6.40)&min_length=30
+		// &max_length=300&query_order=play_count
+		String status = "Ranked";
+		if (!lobby.statusTypes.get(-2)) {
+			status = "Ranked";
+		} else {
+			status = "Ranked,Qualified,Unranked";
+		}
+		String mode = "Standard";
+		// 0 = osu!, 1 = Taiko, 2 = CtB, 3 = osu!mania
+		if (lobby.type.equals("1")){
+			mode = "Taiko";
+		} else if (lobby.type.equals("0")){
+			mode = "Standard";
+		} else if (lobby.type.equals("2")){
+			mode = "CtB";
+		} else if (lobby.type.equals("3")){
+			mode = "Mania";
+		}
+		URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/query/")
+				.setParameter("statuses", status)
+				.setParameter("modes", mode)
+				.setParameter("order", "play_count")
+				.setParameter("max_length", "300")
+				.setParameter("star", "( " + mindiff + "," + maxdiff + ")")
+				.build();
+		HttpGet request = new HttpGet(uri);
+		HttpResponse response = httpClient.execute(request);
+		InputStream content = response.getEntity().getContent();
+		String stringContent = IOUtils.toString(content, "UTF-8");
+		JSONArray array = new JSONArray(stringContent);
+		callback.accept(array.length() > 0 ? (JSONObject) array.get(1) : null);
+	}
+
+	public String searchBeatmap(String name, Lobby lobby, String sender) {
+		try {
+			RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
+					.setConnectionRequestTimeout(10000).build();
+			HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
+			String ranked = "Ranked";
+			String modes = lobby.type;
+			if (lobby.status == 1) {
+
+			}
+
+			URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/query/")
+					.setParameter("title", name).setParameter("statuses", "Ranked").setParameter("modes", modes)
+					.setParameter("order", "play_count")
+					.setParameter("star", "( " + lobby.minDifficulty + "," + lobby.maxDifficulty + ")").build();
+			HttpGet request = new HttpGet(uri);
+			HttpResponse response = httpClient.execute(request);
+			InputStream content = response.getEntity().getContent();
+			String stringContent = IOUtils.toString(content, "UTF-8");
+			JSONObject obj = new JSONObject(stringContent);
+			JSONArray Info = obj.getJSONArray("beatmaps");
+			int size = 0;
+			for (int i = 0; i < Info.length(); i++) {
+				size = size + 1;
+			}
+			;
+			if (size > 1) {
+				if (size > 3) {
+					SendMessage(lobby.channel, sender + ": " + "Found " + size + " maps, please be more precise!");
+				} else if (size < 4) {
+					SendMessage(lobby.channel, sender + ": "
+							+ "Please retry being more specific from the one of the following maps and use !add:");
+					String returnMaps = "";
+					for (int i = 0; i < Info.length(); i++) {
+						String str = "" + Info.get(i);
+						JSONObject beatmap = new JSONObject(str);
+						int id = beatmap.getInt("beatmap_id");
+						String artist = beatmap.getString("artist");
+						String title = beatmap.getString("title");
+						String difficulty = beatmap.getString("difficulty_name");
+						String result = artist + " - " + title + " (" + difficulty + ")";
+						String urllink = "http://osu.ppy.sh/b/" + id;
+						returnMaps = returnMaps + " || [" + urllink + " " + result + "]";
+					}
+					;
+					SendMessage(lobby.channel, sender + ": " + returnMaps);
+				}
+			} else if (size == 0) {
+				SendMessage(lobby.channel, sender + ": 0 beatmaps found in current difficulty range!");
+			} else if (size == 1) {
+				// bot.bancho.sendMessage(sender, "Correct!");
+				// int result = Info.getInt(1);
+				String str = "" + Info.get(0);
+				JSONObject beatmap = new JSONObject(str);
+				String artist = beatmap.getString("artist");
+				String title = beatmap.getString("title");
+				String difficulty = beatmap.getString("difficulty_name");
+				String rating = BigDecimal.valueOf(Math.round((beatmap.getDouble("difficulty") * 100d)) / 100d)
+						.toPlainString();
+				int bID = beatmap.getInt("beatmap_id");
+				String result = artist + " - " + title + " [ " + difficulty + " ] - [ " + rating + "* ]";
+				String result2 = "[http://osu.ppy.sh/b/" + bID + " Link]";
+			}
+		} catch (JSONException | URISyntaxException | IOException e) {
+			e.printStackTrace();
+			SendMessage(sender, sender + ": Error");
+		}
+		return "";
+	}
+	
 	public void nextbeatmap(Lobby lobby) {
 		lobby.voteskip.clear();
 		lobby.voteStart.clear();
@@ -1764,75 +1890,7 @@ public class IRCClient {
 		out.println(message);
 	}
 
-	public String searchBeatmap(String name, Lobby lobby, String sender) {
-		try {
-			RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
-					.setConnectionRequestTimeout(10000).build();
-			HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
-			String ranked = "Ranked";
-			String modes = lobby.type;
-			if (lobby.status == 1) {
 
-			}
-
-			URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/query/")
-					.setParameter("title", name).setParameter("statuses", "Ranked").setParameter("modes", modes)
-					.setParameter("order", "play_count")
-					.setParameter("star", "( " + lobby.minDifficulty + "," + lobby.maxDifficulty + ")").build();
-			HttpGet request = new HttpGet(uri);
-			HttpResponse response = httpClient.execute(request);
-			InputStream content = response.getEntity().getContent();
-			String stringContent = IOUtils.toString(content, "UTF-8");
-			JSONObject obj = new JSONObject(stringContent);
-			JSONArray Info = obj.getJSONArray("beatmaps");
-			int size = 0;
-			for (int i = 0; i < Info.length(); i++) {
-				size = size + 1;
-			}
-			;
-			if (size > 1) {
-				if (size > 3) {
-					SendMessage(lobby.channel, sender + ": " + "Found " + size + " maps, please be more precise!");
-				} else if (size < 4) {
-					SendMessage(lobby.channel, sender + ": "
-							+ "Please retry being more specific from the one of the following maps and use !add:");
-					String returnMaps = "";
-					for (int i = 0; i < Info.length(); i++) {
-						String str = "" + Info.get(i);
-						JSONObject beatmap = new JSONObject(str);
-						int id = beatmap.getInt("beatmap_id");
-						String artist = beatmap.getString("artist");
-						String title = beatmap.getString("title");
-						String difficulty = beatmap.getString("difficulty_name");
-						String result = artist + " - " + title + " (" + difficulty + ")";
-						String urllink = "http://osu.ppy.sh/b/" + id;
-						returnMaps = returnMaps + " || [" + urllink + " " + result + "]";
-					}
-					;
-					SendMessage(lobby.channel, sender + ": " + returnMaps);
-				}
-			} else if (size == 0) {
-				SendMessage(lobby.channel, sender + ": 0 beatmaps found in current difficulty range!");
-			} else if (size == 1) {
-				// bot.bancho.sendMessage(sender, "Correct!");
-				// int result = Info.getInt(1);
-				String str = "" + Info.get(0);
-				JSONObject beatmap = new JSONObject(str);
-				String artist = beatmap.getString("artist");
-				String title = beatmap.getString("title");
-				String difficulty = beatmap.getString("difficulty_name");
-				String rating = BigDecimal.valueOf(Math.round((beatmap.getDouble("difficulty") * 100d)) / 100d)
-						.toPlainString();
-				int bID = beatmap.getInt("beatmap_id");
-				String result = artist + " - " + title + " [ " + difficulty + " ] - [ " + rating + "* ]";
-				String result2 = "[http://osu.ppy.sh/b/" + bID + " Link]";
-			}
-		} catch (JSONException | URISyntaxException | IOException e) {
-			e.printStackTrace();
-			SendMessage(sender, sender + ": Error");
-		}
-		return "";
-	}
 
 	public int getId(String name) {
 		int id = 0;
