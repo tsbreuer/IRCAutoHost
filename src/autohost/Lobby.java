@@ -63,8 +63,8 @@ public class Lobby {
 	
 	// limit to X year beatamps. Why not.
 	public Boolean limitDate;
-	public int minyear;
-	public int maxyear;
+	public int minyear = 2014;
+	public int maxyear = 2100;
 	
 	public String teamgamemode; // Team Type of the lobby. Solo? TeamVs?
 	

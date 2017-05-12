@@ -1473,14 +1473,79 @@ public class IRCClient {
 		return bm;
 	}
 
+	public Beatmap getRandomBeatmap(Lobby lobby){
+		Beatmap returnBeatmap = new Beatmap();
+	try {
+		getRandomWithinSettings(lobby, (obj) -> {
+			if (obj == null) {
+				SendMessage(lobby.channel,"An error ocurred while searching for a random beatmap.");
+				SendMessage(lobby.channel,"Maybe no matches for current lobby settings?");
+				return;
+			}
+
+			String mode = obj.getString("mode");
+			if (!mode.equals(lobby.type)) {
+				SendMessage(lobby.channel,"ERORR: The random beatmap did not fit this lobby's gamemode!");
+				return;
+			}
+			Beatmap beatmap = new Beatmap(obj);
+			if (lobby.onlyDifficulty) { // Does the lobby have
+										// locked difficulty limits?
+				if (!(beatmap.difficulty >= lobby.minDifficulty
+						&& beatmap.difficulty <= lobby.maxDifficulty)) { // Are
+																			// we
+																			// inside
+																			// the
+																			// criteria?
+																			// if
+																			// not,
+																			// return
+					SendMessage(lobby.channel,
+							"ERROR: The difficulty of the random beatmap found does not match the lobby criteria."
+									+ "(Lobby m/M: " + lobby.minDifficulty + "*/" + lobby.maxDifficulty
+									+ "*)," + " Song: " + beatmap.difficulty + "*");
+					return;
+				}
+			}
+			if (!lobby.statusTypes.get(beatmap.graveyard)) {
+				SendMessage(lobby.channel,"ERROR: The random beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
+				return;
+			}
+
+			if (lobby.maxAR != 0) {
+				if (beatmap.difficulty_ar > lobby.maxAR) {
+
+					SendMessage(lobby.channel, "ERROR: The random beatmap has a too high Approach Rate for this lobby! Max: "
+									+ lobby.maxAR + " beatmap AR: " + beatmap.difficulty_ar);
+					return;
+				}
+			}
+
+			if (lobby.onlyGenre) {
+				if (!beatmap.genre.equalsIgnoreCase(lobby.genre)) {
+					SendMessage(lobby.channel, "ERROR: Beatmap genre is incorrect. This lobby is set to only play "
+							+ lobby.genres[Integer.valueOf(lobby.genre)] + " genre!");
+					return;
+				}
+			}
+			
+			returnBeatmap = beatmap;
+		});
+	} catch (Exception e) {
+		e.printStackTrace();
+	}
+	return null;
+	}
+	
 	public void getRandomWithinSettings(Lobby lobby, Consumer<JSONObject> callback)
 			throws URISyntaxException, ClientProtocolException, IOException {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
 		Random rand = new Random();
-		double n = rand.nextDouble();
-		double number = lobby.minDifficulty + (n * (lobby.maxDifficulty - lobby.minDifficulty));
+		int n = rand.nextInt(1000);
+		double num = n / 1000;
+		double number = lobby.minDifficulty + (num * (lobby.maxDifficulty - lobby.minDifficulty));
 		double mindiff = number - 0.1;
 		double maxdiff = number + 0.1;
 		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
@@ -1488,6 +1553,8 @@ public class IRCClient {
 		// &languages=Japanese&statuses=Ranked
 		// &modes=Standard&star=(3.60,6.40)&min_length=30
 		// &max_length=300&query_order=play_count
+		
+		//http://osusearch.com/query/?genres=Anime&languages=Japanese&statuses=Ranked&modes=Standard&star=(4.1,4.3)&min_length=30&max_length=300&query_order=play_count
 		String status = "Ranked";
 		if (!lobby.statusTypes.get(-2)) {
 			status = "Ranked";
@@ -1495,6 +1562,7 @@ public class IRCClient {
 			status = "Ranked,Qualified,Unranked";
 		}
 		String mode = "Standard";
+		String maxAR= "12";
 		// 0 = osu!, 1 = Taiko, 2 = CtB, 3 = osu!mania
 		if (lobby.type.equals("1")){
 			mode = "Taiko";
@@ -1505,12 +1573,24 @@ public class IRCClient {
 		} else if (lobby.type.equals("3")){
 			mode = "Mania";
 		}
+		if (lobby.maxAR > 0.0){
+			maxAR = ""+lobby.maxAR;
+		}
+		String date_start = "2000-1-1";
+		String date_end = "2020-1-1";
+		if (lobby.limitDate){
+			date_start=lobby.minyear+"-1-1";
+			date_end  =lobby.maxyear+"-1-1";
+		}
 		URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/query/")
 				.setParameter("statuses", status)
 				.setParameter("modes", mode)
 				.setParameter("order", "play_count")
 				.setParameter("max_length", "300")
 				.setParameter("star", "( " + mindiff + "," + maxdiff + ")")
+				.setParameter("date_start", date_start)
+				.setParameter("date_end", date_end)
+				.setParameter("ar", "( 0," + maxAR + ")")
 				.build();
 		HttpGet request = new HttpGet(uri);
 		HttpResponse response = httpClient.execute(request);
