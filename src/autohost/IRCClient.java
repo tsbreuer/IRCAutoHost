@@ -655,6 +655,24 @@ public class IRCClient {
 								return;
 							}
 						}
+						if (lobby.limitDate){
+							Pattern date = Pattern.compile("(\\d+)\\-(\\d+)\\-(\\d+)(.+)");
+							Matcher dateM = date.matcher(beatmap.date);
+							if (dateM.matches()){
+								if (Integer.valueOf(dateM.group(1)) >= lobby.maxyear || Integer.valueOf(dateM.group(1)) <= lobby.minyear){
+									SendMessage(lobby.channel, Sender + " This beatmap is too old or new for this beatmap! Range: "+lobby.minyear+"-"+lobby.maxyear);
+									return;
+								}
+							}
+						}
+						if (beatmap.total_length >= lobby.maxLength){
+							String length = "";
+							int minutes = lobby.maxLength/60;
+							int seconds = lobby.maxLength - (minutes*60);
+							length = minutes+":"+seconds;
+							SendMessage(lobby.channel, Sender + " This beatmap too long! Max length is: "+length);
+							return;
+						}
 						/*
 						 * if (mapR.group(2) != null) { String modString =
 						 * mapR.group(2); String[] mods = modString.split(" ");
@@ -726,7 +744,7 @@ public class IRCClient {
 
 						} catch (JSONException | IOException | URISyntaxException | BeatmapException e) {
 							e.printStackTrace();
-							SendMessage(lobby.channel, "Error Parsing beatmap");
+							SendMessage(lobby.channel, "Error Parsing beatmap. Please try again.");
 						}
 
 						if (lobby.onlyDifficulty) { // Does the lobby have
@@ -747,6 +765,25 @@ public class IRCClient {
 								return;
 							}
 						}
+						if (lobby.limitDate){
+							Pattern date = Pattern.compile("(\\d+)\\-(\\d+)\\-(\\d+)(.+)");
+							Matcher dateM = date.matcher(beatmap.date);
+							if (dateM.matches()){
+								if (Integer.valueOf(dateM.group(1)) >= lobby.maxyear || Integer.valueOf(dateM.group(1)) <= lobby.minyear){
+									SendMessage(lobby.channel, Sender + " This beatmap is too old or new for this beatmap! Range: "+lobby.minyear+"-"+lobby.maxyear);
+									return;
+								}
+							}
+						}
+						if ((beatmap.total_length/1.5) >= lobby.maxLength){
+							String length = "";
+							int minutes = lobby.maxLength/60;
+							int seconds = lobby.maxLength - (minutes*60);
+							length = minutes+":"+seconds;
+							SendMessage(lobby.channel, Sender + " This beatmap too long! Max length is: "+length);
+							return;
+						}
+						
 						if (!lobby.statusTypes.get(beatmap.graveyard)) {
 							SendMessage(lobby.channel, Sender
 									+ " That beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
@@ -1031,6 +1068,66 @@ public class IRCClient {
 
 					}
 				}
+			} else if (args[0].equalsIgnoreCase("maxyear")) {
+				for (int ID : lobby.OPs) {
+					if (ID == (getId(Sender))) {
+						Pattern maxyr = Pattern.compile("maxyear (.+)");
+						Matcher yrM = maxyr.matcher(message);
+						if (yrM.matches()) {
+							if (Integer.valueOf(yrM.group(1)) < lobby.minyear){
+								SendMessage(lobby.channel, "Max year cant be smaller than min year. Please lower that first ;)");
+								return;
+							}
+							lobby.maxyear = Integer.valueOf(yrM.group(1));
+								SendMessage(lobby.channel, "New newer year limit now is " + yrM.group(1));
+						} else {
+							lobby.maxyear = 2200;
+							SendMessage(lobby.channel, "Newest year limit was removed.");
+						}
+
+					}
+				}
+			} else if (args[0].equalsIgnoreCase("minyear")) {
+				for (int ID : lobby.OPs) {
+					if (ID == (getId(Sender))) {
+						Pattern minyr = Pattern.compile("minyear (.+)");
+						Matcher yrM = minyr.matcher(message);
+						if (yrM.matches()) {
+							if (Integer.valueOf(yrM.group(1)) > lobby.maxyear){
+								SendMessage(lobby.channel, "Min year cant be bigger than max year. Please increase that first ;)");
+								return;
+							}
+							lobby.minyear = Integer.valueOf(yrM.group(1));
+								SendMessage(lobby.channel, "Oldest year limit now is " + yrM.group(1));
+						} else {
+							lobby.minyear = 0;
+							SendMessage(lobby.channel, "Oldest year limit was removed");
+						}
+
+					}
+				}
+			} else if (args[0].equalsIgnoreCase("limityear")) {
+				for (int ID : lobby.OPs) {
+					if (ID == (getId(Sender))) {
+						lobby.limitDate = !lobby.limitDate;
+						SendMessage(lobby.channel, "Toggled Date limiting. State: "+lobby.limitDate);
+					}
+				}
+			} else if (args[0].equalsIgnoreCase("duration")) {
+				for (int ID : lobby.OPs) {
+					if (ID == (getId(Sender))) {
+						Pattern minyr = Pattern.compile("duration (.+)");
+						Matcher yrM = minyr.matcher(message);
+						if (yrM.matches()) {
+							lobby.maxLength = Integer.valueOf(yrM.group(1));
+							String length = "";
+							int minutes = lobby.maxLength/60;
+							int seconds = lobby.maxLength - (minutes*60);
+							length = minutes+":"+seconds;
+								SendMessage(lobby.channel, "Maximum duration now is " + length);
+						}
+					}
+				}
 			} else if (args[0].equalsIgnoreCase("hostme")) {
 				for (int ID : lobby.OPs) {
 					if (ID == (getId(Sender))) {
@@ -1041,6 +1138,13 @@ public class IRCClient {
 				for (int ID : lobby.OPs) {
 					if (ID == (getId(Sender))) {
 						SendMessage(lobby.channel, "!mp clearhost");
+					}
+				}
+			} else if (args[0].equalsIgnoreCase("random")) {
+				for (int ID : lobby.OPs) {
+					if (ID == (getId(Sender))) {
+						lobby.TrueRandom = !lobby.TrueRandom;
+						SendMessage(lobby.channel, "Toggled Random Maps. State: "+lobby.TrueRandom);
 					}
 				}
 			} else if (args[0].equalsIgnoreCase("rename")) {
@@ -1162,6 +1266,21 @@ public class IRCClient {
 						return;
 					}
 
+					if ((beatmap.total_length) >= lobby.maxLength){
+						String length = "";
+						int minutes = lobby.maxLength/60;
+						int seconds = lobby.maxLength - (minutes*60);
+						length = minutes+":"+seconds;
+						SendMessage(lobby.channel, Sender + " This beatmap too long! Max length is: "+length);
+						return;
+					}
+					
+					if (!lobby.statusTypes.get(beatmap.graveyard)) {
+						SendMessage(lobby.channel, Sender
+								+ " That beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
+						return;
+					}
+					
 					if (lobby.onlyGenre) {
 						if (!beatmap.genre.equalsIgnoreCase(lobby.genre)) {
 							if (!block) {
@@ -1370,7 +1489,6 @@ public class IRCClient {
 				int id = beatmap.getInt("beatmap_id");
 				if (id == lastBeatmap) {
 					int score = beatmap.getInt("score");
-					int maxcombo = beatmap.getInt("maxcombo");
 					int c50s = beatmap.getInt("count50");
 					int c100s = beatmap.getInt("count100");
 					int c300s = beatmap.getInt("count300");
@@ -1390,7 +1508,7 @@ public class IRCClient {
 						modsString = "NOMOD";
 					SendMessage(lobby.channel,
 							user + " || Rank: " + rank + " || Mods: " + modsString + " || Hits: " + c300s + "/" + c100s
-									+ "/" + c50s + "/" + miss + " || Combo: (" + maxcombo + "/" + ppcalc.getMaxCombo()
+									+ "/" + c50s + "/" + miss + " || Combo: (" + ppcalc.getMaxCombo() + "/" + ppcalc.getMaxCombo()
 									+ ") || " + String.format("%.02f", +acc * 100) + "% || PP: "
 									+ String.format("%.02f", pp) + " ");
 
@@ -1473,88 +1591,88 @@ public class IRCClient {
 		return bm;
 	}
 
-	public Beatmap getRandomBeatmap(Lobby lobby){
+	public void getRandomBeatmap(Lobby lobby) {
 		Beatmap returnBeatmap = new Beatmap();
-	try {
-		getRandomWithinSettings(lobby, (obj) -> {
-			if (obj == null) {
-				SendMessage(lobby.channel,"An error ocurred while searching for a random beatmap.");
-				SendMessage(lobby.channel,"Maybe no matches for current lobby settings?");
-				return;
-			}
+		try {
+			getRandomWithinSettings(lobby, (obj) -> {
+				if (obj == null) {
+					SendMessage(lobby.channel, "An error ocurred while searching for a random beatmap.");
+					SendMessage(lobby.channel, "Maybe no matches for current lobby settings? Retrying");
+					nextbeatmap(lobby);
+					return;
+				}
 
-			String mode = obj.getString("mode");
-			if (!mode.equals(lobby.type)) {
-				SendMessage(lobby.channel,"ERORR: The random beatmap did not fit this lobby's gamemode!");
-				return;
-			}
-			Beatmap beatmap = new Beatmap(obj);
-			if (lobby.onlyDifficulty) { // Does the lobby have
-										// locked difficulty limits?
-				if (!(beatmap.difficulty >= lobby.minDifficulty
-						&& beatmap.difficulty <= lobby.maxDifficulty)) { // Are
-																			// we
-																			// inside
-																			// the
-																			// criteria?
-																			// if
-																			// not,
-																			// return
+				String mode = ""+obj.getInt("gamemode");
+				if (!mode.equals(lobby.type)) {
+					SendMessage(lobby.channel, "ERORR: The random beatmap did not fit this lobby's gamemode!");
+					return;
+				}
+				Beatmap beatmap = new Beatmap(obj,true);
+				if (lobby.onlyDifficulty) { // Does the lobby have
+											// locked difficulty limits?
+					if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) { // Are
+																														// we
+																														// inside
+																														// the
+																														// criteria?
+																														// if
+																														// not,
+																														// return
+						SendMessage(lobby.channel,
+								"ERROR: The difficulty of the random beatmap found does not match the lobby criteria."
+										+ "(Lobby m/M: " + lobby.minDifficulty + "*/" + lobby.maxDifficulty + "*),"
+										+ " Song: " + beatmap.difficulty + "*");
+						return;
+					}
+				}
+				if (!lobby.statusTypes.get(beatmap.graveyard)) {
 					SendMessage(lobby.channel,
-							"ERROR: The difficulty of the random beatmap found does not match the lobby criteria."
-									+ "(Lobby m/M: " + lobby.minDifficulty + "*/" + lobby.maxDifficulty
-									+ "*)," + " Song: " + beatmap.difficulty + "*");
+							"ERROR: The random beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
 					return;
 				}
-			}
-			if (!lobby.statusTypes.get(beatmap.graveyard)) {
-				SendMessage(lobby.channel,"ERROR: The random beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
-				return;
-			}
 
-			if (lobby.maxAR != 0) {
-				if (beatmap.difficulty_ar > lobby.maxAR) {
+				if (lobby.maxAR != 0) {
+					if (beatmap.difficulty_ar > lobby.maxAR) {
 
-					SendMessage(lobby.channel, "ERROR: The random beatmap has a too high Approach Rate for this lobby! Max: "
-									+ lobby.maxAR + " beatmap AR: " + beatmap.difficulty_ar);
-					return;
+						SendMessage(lobby.channel,
+								"ERROR: The random beatmap has a too high Approach Rate for this lobby! Max: "
+										+ lobby.maxAR + " beatmap AR: " + beatmap.difficulty_ar);
+						return;
+					}
 				}
-			}
 
-			if (lobby.onlyGenre) {
-				if (!beatmap.genre.equalsIgnoreCase(lobby.genre)) {
-					SendMessage(lobby.channel, "ERROR: Beatmap genre is incorrect. This lobby is set to only play "
-							+ lobby.genres[Integer.valueOf(lobby.genre)] + " genre!");
-					return;
+				if (lobby.onlyGenre) {
+					if (!beatmap.genre.equalsIgnoreCase(lobby.genre)) {
+						SendMessage(lobby.channel, "ERROR: Beatmap genre is incorrect. This lobby is set to only play "
+								+ lobby.genres[Integer.valueOf(lobby.genre)] + " genre!");
+						return;
+					}
 				}
-			}
-			
-			returnBeatmap = beatmap;
-		});
-	} catch (Exception e) {
-		e.printStackTrace();
+
+				changeBeatmap(lobby, beatmap);
+			});
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
-	return null;
-	}
-	
+
 	public void getRandomWithinSettings(Lobby lobby, Consumer<JSONObject> callback)
 			throws URISyntaxException, ClientProtocolException, IOException {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
 		Random rand = new Random();
-		int n = rand.nextInt(1000);
-		double num = n / 1000;
+		double num = rand.nextDouble();
 		double number = lobby.minDifficulty + (num * (lobby.maxDifficulty - lobby.minDifficulty));
-		double mindiff = number - 0.1;
-		double maxdiff = number + 0.1;
+		double mindiff = number - 0.01;
+		double maxdiff = number + 0.01;
 		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
 		// http://osusearch.com/search/?genres=Anime
 		// &languages=Japanese&statuses=Ranked
 		// &modes=Standard&star=(3.60,6.40)&min_length=30
 		// &max_length=300&query_order=play_count
-		
-		//http://osusearch.com/query/?genres=Anime&languages=Japanese&statuses=Ranked&modes=Standard&star=(4.1,4.3)&min_length=30&max_length=300&query_order=play_count
+
+		// http://osusearch.com/query/?genres=Anime&languages=Japanese&statuses=Ranked&modes=Standard&star=(4.1,4.3)&min_length=30&max_length=300&query_order=play_count
 		String status = "Ranked";
 		if (!lobby.statusTypes.get(-2)) {
 			status = "Ranked";
@@ -1562,42 +1680,40 @@ public class IRCClient {
 			status = "Ranked,Qualified,Unranked";
 		}
 		String mode = "Standard";
-		String maxAR= "12";
+		String maxAR = "12";
 		// 0 = osu!, 1 = Taiko, 2 = CtB, 3 = osu!mania
-		if (lobby.type.equals("1")){
+		if (lobby.type.equals("1")) {
 			mode = "Taiko";
-		} else if (lobby.type.equals("0")){
+		} else if (lobby.type.equals("0")) {
 			mode = "Standard";
-		} else if (lobby.type.equals("2")){
+		} else if (lobby.type.equals("2")) {
 			mode = "CtB";
-		} else if (lobby.type.equals("3")){
+		} else if (lobby.type.equals("3")) {
 			mode = "Mania";
 		}
-		if (lobby.maxAR > 0.0){
-			maxAR = ""+lobby.maxAR;
+		if (lobby.maxAR > 0.0) {
+			maxAR = "" + lobby.maxAR;
 		}
 		String date_start = "2000-1-1";
 		String date_end = "2020-1-1";
-		if (lobby.limitDate){
-			date_start=lobby.minyear+"-1-1";
-			date_end  =lobby.maxyear+"-1-1";
+		if (lobby.limitDate) {
+			date_start = lobby.minyear + "-1-1";
+			date_end = lobby.maxyear + "-1-1";
 		}
 		URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/query/")
-				.setParameter("statuses", status)
-				.setParameter("modes", mode)
-				.setParameter("order", "play_count")
-				.setParameter("max_length", "300")
-				.setParameter("star", "( " + mindiff + "," + maxdiff + ")")
-				.setParameter("date_start", date_start)
-				.setParameter("date_end", date_end)
-				.setParameter("ar", "( 0," + maxAR + ")")
-				.build();
+				.setParameter("statuses", status).setParameter("modes", mode).setParameter("order", "-difficulty")
+				.setParameter("max_length", "300").setParameter("star", "( " + mindiff + "," + maxdiff + ")")
+				.setParameter("date_start", date_start).setParameter("date_end", date_end)
+				.setParameter("ar", "( 0," + maxAR + ")").build();
 		HttpGet request = new HttpGet(uri);
 		HttpResponse response = httpClient.execute(request);
 		InputStream content = response.getEntity().getContent();
 		String stringContent = IOUtils.toString(content, "UTF-8");
-		JSONArray array = new JSONArray(stringContent);
-		callback.accept(array.length() > 0 ? (JSONObject) array.get(1) : null);
+		JSONObject obj = new JSONObject(stringContent);
+		JSONArray array = obj.getJSONArray("beatmaps");
+		Random randomNumber = new Random();
+		int pick = randomNumber.nextInt(array.length());
+		callback.accept(array.length() > 0 ? (JSONObject) array.get(pick) : null);
 	}
 
 	public String searchBeatmap(String name, Lobby lobby, String sender) {
@@ -1669,6 +1785,64 @@ public class IRCClient {
 		}
 		return "";
 	}
+
+	
+	public void changeBeatmap(Lobby lobby, Beatmap next){
+		lobby.voteskip.clear();
+		lobby.voteStart.clear();
+		lobby.Playing = false;
+		SendMessage(lobby.channel, "!mp map " + next.beatmap_id + " " + lobby.type);
+		lobby.previousBeatmap = lobby.currentBeatmap;
+		lobby.currentBeatmap = next.beatmap_id;
+		lobby.currentBeatmapAuthor = next.artist;
+		lobby.currentBeatmapName = next.title;
+		lobby.timer.continueTimer();
+		if (next.DT) {
+			if (!lobby.DoubleTime) {
+				SendMessage(lobby.channel, "!mp mods DT Freemod");
+				lobby.DoubleTime = true;
+			}
+		} else if (next.HT) {
+			if (!lobby.HalfTime) {
+				lobby.HalfTime = true;
+				SendMessage(lobby.channel, "!mp mods HT Freemod");
+			}
+		} else if (next.NC) {
+			if (!lobby.NightCore) {
+				lobby.NightCore = true;
+				SendMessage(lobby.channel, "!mp mods NC Freemod");
+			}
+		} else {
+			if (lobby.DoubleTime || lobby.HalfTime || lobby.NightCore) {
+				{
+					SendMessage(lobby.channel, "!mp mods Freemod");
+					lobby.DoubleTime = false;
+					lobby.HalfTime = false;
+					lobby.NightCore = false;
+				}
+			}
+		}
+		SendMessage(lobby.channel, "Up next: [https://osu.ppy.sh/b/" + next.beatmap_id + " " + next.artist + " - "
+				+ next.title + "] [" + round(next.difficulty, 2) + "*]");
+
+		String md = "";
+
+		beatmapFile pplife = getPeppyPoints(next.beatmap_id, lobby);
+		if (lobby.DoubleTime)
+			md = md + "DT";
+		if (lobby.NightCore)
+			md = md + "NC";
+		if (lobby.HalfTime)
+			md = md + "HT";
+		if (pplife.ppvalues[0] != 0) {
+			SendMessage(lobby.channel,
+					md + "SS: " + String.format("%.02f", pplife.ppvalues[0]) + "pp || " + md + "HD: "
+							+ String.format("%.02f", pplife.ppvalues[1]) + "pp || " + md + "HR: "
+							+ String.format("%.02f", pplife.ppvalues[2]) + "pp || " + md + "HDHR: "
+							+ String.format("%.02f", pplife.ppvalues[3]) + "pp");
+		}
+		lobby.beatmapPlayed.add(next);
+	}
 	
 	public void nextbeatmap(Lobby lobby) {
 		lobby.voteskip.clear();
@@ -1676,11 +1850,18 @@ public class IRCClient {
 		lobby.Playing = false;
 		Beatmap next = lobby.beatmapQueue.poll();
 		if (next == null) {
-			next = lobby.beatmapPlayed.poll();
-			if (next == null) {
-				lobby.currentBeatmap = null;
-				SendMessage(lobby.channel, "Played Queue is Empty. Please add some maps ;(");
+			if (lobby.TrueRandom) {
+				SendMessage(lobby.channel, "Queue is empty. Selecting a random beatmap matching this lobby...");
+				getRandomBeatmap(lobby);
 				return;
+			} else {
+				next = lobby.beatmapPlayed.poll();
+				if (next == null) {
+					lobby.currentBeatmap = null;
+					SendMessage(lobby.channel, "Played Queue is Empty. Please add some maps ;(");
+					return;
+				}
+				SendMessage(lobby.channel, "Queue is empty. Selecting the oldest map played.");
 			}
 		}
 
@@ -1969,8 +2150,6 @@ public class IRCClient {
 		}
 		out.println(message);
 	}
-
-
 
 	public int getId(String name) {
 		int id = 0;

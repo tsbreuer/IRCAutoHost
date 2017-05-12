@@ -23,6 +23,8 @@ public class Lobby {
 	public String name;
 	public Boolean OPLobby = false;
 	public String creatorName;
+	
+	public int maxLength = 360;
 
 	
 	public String Password = "";
@@ -38,7 +40,7 @@ public class Lobby {
 	
 	public Double maxAR =  0.0;
 	
-	public Boolean TrueRandom = false;
+	public Boolean TrueRandom = true;
 	
 	public Queue<Beatmap> beatmapQueue = new LinkedList<>();
 	public Queue<Beatmap> beatmapPlayed = new LinkedList<>();
@@ -62,8 +64,8 @@ public class Lobby {
 	 */
 	
 	// limit to X year beatamps. Why not.
-	public Boolean limitDate;
-	public int minyear = 2014;
+	public Boolean limitDate = false;
+	public int minyear = 2011;
 	public int maxyear = 2100;
 	
 	public String teamgamemode; // Team Type of the lobby. Solo? TeamVs?
