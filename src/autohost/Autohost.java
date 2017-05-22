@@ -19,7 +19,7 @@ import java.util.regex.*;
 
 
 public class Autohost  {
-	
+
 	Socket socket;
 	BufferedWriter writer;
 	BufferedReader reader;
@@ -32,18 +32,19 @@ public class Autohost  {
 	public ReconnectTimer reconnection;
 	//private RateLimiterThread rate;
 	private ReconnectTimer ReconnectTimer;
-	
+
     public static void main(String[] args) throws Exception {
     	//reconnection = new ReconnectTimer(irc);
-    	AutoHost = new Autohost();
+//    	AutoHost = new Autohost();
+        System.out.println("Test to make sure it builds.");
     }
-    
+
     public Autohost() throws FileNotFoundException, IOException{
     	this.config = new Config("config.properties");
     	this.irc = new IRCClient(this,config);
     	this.ReconnectTimer = new ReconnectTimer(this.irc,this);
     }
-    
+
 	public void ReconnectAutoHost(){
 		try {
 			this.irc.stopIRC();
@@ -57,14 +58,14 @@ public class Autohost  {
 			e.printStackTrace();
 		}
 	}
-	
+
 }
 
 	/*
 
-	
+
 	@Override
-	public void onMessage(String channel, String sender, String login, String hostname, String message){	
+	public void onMessage(String channel, String sender, String login, String hostname, String message){
 		//System.out.println(">Channel>"+channel+" - "+sender+" : "+message);
 			Pattern pattern = Pattern.compile("#mp_\\d"); // Is this a multi lobby channel?
 			Matcher matcher = pattern.matcher(channel);
@@ -82,7 +83,7 @@ public class Autohost  {
 	}
 	*/
 	/*
-	public void onPrivateMessage(String sender, String login, String hostname, String message){	
+	public void onPrivateMessage(String sender, String login, String hostname, String message){
 		System.out.println(sender+" : "+message);
 		message = message.trim();
 		if (sender.equalsIgnoreCase("AutoHost")) {
@@ -101,23 +102,23 @@ public class Autohost  {
 				}
 			}
 			else if (args.length == 2){
-				
+
 			}
-				
-			
+
+
 		}
 		else
 		{
 			//this.sendRawLine("PRIVMSG "+sender+" This account is a bot. Command prefix is !. Send me !help for more info.");
 			sendRawMessage(sender, "This account is a bot. Command prefix is !. Send me !help for more info.");
-			
+
 		}
 	}
 	public void NewLobbyMessage(String channel,String sender, String message)
 	{
-		
+
 	}
-	
+
 	public void ParseChannelMessage(Lobby lobby, String message)
 	{
 		if (message.contains("Closed the match")){
@@ -125,14 +126,14 @@ public class Autohost  {
 			System.out.println("Closed Match "+lobby.channel);
 		}
 	}
-	
+
 	public void sendRawMessage(String target, String message) {
 		if (rate== null){
 			rate = new RateLimiterThread(this);
 			rate.start();
 			this.sendRawLine("PRIVMSG AutoHost return");
 			System.out.println("New RateLimiter");
-			
+
 		}
 		System.out.println(this.rate.getState());
 		Boolean exists = false;
@@ -146,18 +147,18 @@ public class Autohost  {
 			System.out.println("New target. Add.");
 			RateLimiter rlimiter = new RateLimiter(target, 200);
 			rlimiter.addMessage(message);
-			limiters.add(rlimiter);		
+			limiters.add(rlimiter);
 		}
 	}
-	
+
 	public void IgnoreSend(String line){
 		this.sendRawLine(line);
 	}
 
 	/*public void setRate(RateLimiterThread rate2) {
 		rate2.start();
-		this.rate = rate2;	
+		this.rate = rate2;
 	}
 	*/
-	
+
 

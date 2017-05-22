@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import autohost.utils.*;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -36,13 +37,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import autohost.utils.Beatmap;
-import autohost.utils.InputDumper;
-import autohost.utils.RateLimiterThread;
-import autohost.utils.Request;
-import autohost.utils.Slot;
-import autohost.utils.TimerThread;
-import autohost.utils.beatmapFile;
 import lt.ekgame.beatmap_analyzer.calculator.Difficulty;
 import lt.ekgame.beatmap_analyzer.calculator.Performance;
 import lt.ekgame.beatmap_analyzer.calculator.PerformanceCalculator;
@@ -630,13 +624,13 @@ public class IRCClient {
 							return;
 						}
 
-						String mode = obj.getString("mode");
+						String mode = JSONUtils.silentGetString(obj, "mode");
 						if (!mode.equals(lobby.type)) {
 							SendMessage(lobby.channel,
 									Sender + " That beatmap does not fit the lobby's current gamemode!");
 							return;
 						}
-						Beatmap beatmap = new Beatmap(obj);
+						Beatmap beatmap = JSONUtils.silentGetBeatmap(obj);
 						beatmap.RequestedBy = getId(Sender);
 						if (lobby.onlyDifficulty) { // Does the lobby have
 													// locked difficulty limits?
@@ -741,13 +735,13 @@ public class IRCClient {
 							return;
 						}
 
-						String mode = obj.getString("mode");
+						String mode = JSONUtils.silentGetString(obj, "mode");
 						if (!mode.equals(lobby.type)) {
 							SendMessage(lobby.channel,
 									Sender + " That beatmap does not fit the lobby's current gamemode!");
 							return;
 						}
-						Beatmap beatmap = new Beatmap(obj);
+						Beatmap beatmap = JSONUtils.silentGetBeatmap(obj);
 						beatmap.RequestedBy = getId(Sender);
 						beatmap.DT = true;
 						try {
@@ -769,7 +763,7 @@ public class IRCClient {
 							beatmap.difficulty_od = cbp.getDifficultySettings().getOD();
 							beatmap.difficulty_hp = cbp.getDifficultySettings().getHP();
 
-						} catch (JSONException | IOException | URISyntaxException | BeatmapException e) {
+						} catch (IOException | URISyntaxException | BeatmapException e) {
 							e.printStackTrace();
 							SendMessage(lobby.channel, "Error Parsing beatmap. Please try again.");
 						}
@@ -1263,14 +1257,14 @@ public class IRCClient {
 				// lobby.requests
 				System.out.println("Array has #objects: " + array.length());
 				for (int i = 0; i < array.length(); i++) {
-					JSONObject obj = array.getJSONObject(i);
+					JSONObject obj = JSONUtils.silentGetArray(array, i);
 					Boolean block = false;
-					String mode = obj.getString("mode");
+					String mode = JSONUtils.silentGetString(obj, "mode");
 					if (!mode.equals(lobby.type)) {
 						SendMessage(lobby.channel, Sender + " That beatmap does not fit the lobby's current gamemode!");
 						return;
 					}
-					Beatmap beatmap = new Beatmap(obj);
+					Beatmap beatmap = JSONUtils.silentGetBeatmap(obj);
 					beatmap.RequestedBy = getId(Sender);
 					if (lobby.onlyDifficulty) { // Does the lobby have
 												// locked difficulty limits?
@@ -1326,7 +1320,7 @@ public class IRCClient {
 					}
 					if (!block) {
 						request.beatmaps.put(beatmap.beatmap_id, beatmap);
-						request.bids.add(obj.getInt("beatmap_id"));
+						request.bids.add(JSONUtils.silentGetInt(obj, "beatmap_id"));
 					}
 				}
 				if (request.bids.size() == 0) {
@@ -1355,7 +1349,7 @@ public class IRCClient {
 	}
 
 	public void getBeatmap(int beatmapId, Lobby lobby, Consumer<JSONObject> callback)
-			throws URISyntaxException, ClientProtocolException, IOException {
+			throws URISyntaxException, ClientProtocolException, IOException, JSONException {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
@@ -1372,7 +1366,7 @@ public class IRCClient {
 	}
 
 	public void getBeatmapDiff(int beatmapId, Lobby lobby, Consumer<JSONArray> callback)
-			throws URISyntaxException, ClientProtocolException, IOException {
+			throws URISyntaxException, ClientProtocolException, IOException, JSONException {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
@@ -1550,7 +1544,7 @@ public class IRCClient {
 			if (!foundMap) {
 				SendMessage(lobby.channel, user + " You didnt play (or pass) last beatmap!");
 			}
-		} catch (URISyntaxException | IOException e) {
+		} catch (URISyntaxException | IOException | JSONException e) {
 			e.printStackTrace();
 		}
 	}
@@ -1615,7 +1609,7 @@ public class IRCClient {
 			str[1] = ssHIDDEN;
 			str[2] = ssHR;
 			str[3] = ssHDHR;
-		} catch (JSONException | IOException | URISyntaxException | BeatmapException e) {
+		} catch (IOException | URISyntaxException | BeatmapException e) {
 			e.printStackTrace();
 			SendMessage(lobby.channel, "Error Parsing beatmap");
 			return null;
@@ -1635,12 +1629,12 @@ public class IRCClient {
 					return;
 				}
 
-				String mode = "" + obj.getInt("gamemode");
+				String mode = "" + JSONUtils.silentGetInt(obj, "gamemode");
 				if (!mode.equals(lobby.type)) {
 					SendMessage(lobby.channel, "ERORR: The random beatmap did not fit this lobby's gamemode!");
 					return;
 				}
-				Beatmap beatmap = new Beatmap(obj, true);
+				Beatmap beatmap = JSONUtils.silentGetBeatmap(obj, true);
 				if (lobby.onlyDifficulty) { // Does the lobby have
 											// locked difficulty limits?
 					if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) { // Are
@@ -1690,7 +1684,7 @@ public class IRCClient {
 	}
 
 	public void getRandomWithinSettings(Lobby lobby, Consumer<JSONObject> callback)
-			throws URISyntaxException, ClientProtocolException, IOException {
+			throws URISyntaxException, ClientProtocolException, IOException, JSONException {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
@@ -2209,7 +2203,7 @@ public class IRCClient {
 				String stringContent = IOUtils.toString(content, "UTF-8");
 				JSONArray array = new JSONArray(stringContent);
 				id = array.getJSONObject(0).getInt("user_id");
-			} catch (URISyntaxException | IOException e) {
+			} catch (JSONException | URISyntaxException | IOException e) {
 				e.printStackTrace();
 			}
 		}

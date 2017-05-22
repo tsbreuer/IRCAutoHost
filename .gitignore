@@ -1,2 +1,4 @@
 *.class
 config.properties
+.ideaModules/
+libs/
