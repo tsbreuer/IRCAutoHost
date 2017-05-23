@@ -21,7 +21,7 @@ public class TimerThread extends Thread {
 	public void stopTimer() {
 		stopped = true;
 	}
-	
+
 	public void continueTimer(){
 		stopped = false;
 		resetTimer();
@@ -47,7 +47,7 @@ public class TimerThread extends Thread {
 	}
 
 	private void sendMessage(String message) {
-		client.SendMessage(lobby.channel, message);
+		client.m_tempClient.sendMessage(lobby.channel, message);
 	}
 
 	public void run() {
@@ -72,9 +72,9 @@ public class TimerThread extends Thread {
 				lobby.slots.clear();
 				sendMessage("!mp settings");
 				sendMessage("Starting in 10 seconds.");
-				
+
 			}
-			if (currTime >= startTime && prevTime <= startTime) {			
+			if (currTime >= startTime && prevTime <= startTime) {
 				client.tryStart(lobby);
 			}
 			try {

@@ -45,25 +45,25 @@ public class InputDumper extends Thread {
 				if (msg.contains("PING")) {
 					if (!msg.contains("cho@ppy.sh QUIT")) {
 						String pingRequest = msg.substring(msg.indexOf("PING") + 5);
-						client.Write("PONG " + pingRequest);
+						client.m_tempClient.write("PONG " + pingRequest);
 						client.LastConnection = System.currentTimeMillis();
 					}
 				} else if (msg.contains("PONG")) {
 					if (!msg.contains("cho@ppy.sh QUIT")) {
 						client.LastConnection = System.currentTimeMillis();
 							if (msg.contains(client.LastMessagePING)){
-							
+
 							}
 					}
 				}
 				client.log(msg);
 				if ((System.currentTimeMillis() - client.LastConnection) > (70 * 1000)) {
-					if (System.currentTimeMillis()-client.LastRequested > (5 * 1000)){			
-					client.Write("PING " + System.currentTimeMillis());
+					if (System.currentTimeMillis()-client.LastRequested > (5 * 1000)){
+					client.m_tempClient.write("PING " + System.currentTimeMillis());
 					client.LastMessagePING = ""+System.currentTimeMillis();
 					client.LastRequested = System.currentTimeMillis();
 					System.out.println((System.currentTimeMillis() - client.LastConnection));
-					}		
+					}
 					if ((System.currentTimeMillis()-client.LastConnection) > (100*1000)){
 						autohost.ReconnectAutoHost();
 						System.out.println("Connection to bancho Lost. Reconnecting...");
