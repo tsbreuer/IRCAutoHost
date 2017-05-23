@@ -24,7 +24,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static autohost.util.MathUtils.round;
 
@@ -108,8 +107,9 @@ public class ChannelMessageHandler {
         }
 
         // Beatmap change... i guess thats k?
-        Pattern beatmap = Pattern.compile("Beatmap: https://osu.ppy.sh/b/(\\d+) (.+)- (.+)");
-        Matcher bM = beatmap.matcher(message);
+        Matcher bM = RegexUtils.matcher(
+                "Beatmap: https://osu.ppy.sh/b/(\\d+) (.+)- (.+)",
+                message);
         if (bM.matches()) {
             lobby.currentBeatmap = Integer.valueOf(bM.group(1));
             lobby.currentBeatmapAuthor = bM.group(2);
@@ -117,8 +117,9 @@ public class ChannelMessageHandler {
         }
 
         // Is this one even worth adding?
-        Pattern players = Pattern.compile("Players: (\\d+)");
-        Matcher pM = players.matcher(message);
+        Matcher pM = RegexUtils.matcher(
+                "Players: (\\d+)",
+                message);
         if (pM.matches()) {
             if (lobby.slots.size() != Integer.valueOf(pM.group(1))) {
                 // m_client.sendMessage(lobby.channel, "Warning: Player count
@@ -126,8 +127,9 @@ public class ChannelMessageHandler {
             }
         }
 
-        Pattern password = Pattern.compile("(.+) the match password");
-        Matcher passmatch = password.matcher(message);
+        Matcher passmatch = RegexUtils.matcher(
+                "(.+) the match password",
+                message);
         if (passmatch.matches()) {
             if (passmatch.group(1).equals("Enabled")) {
                 if (lobby.Password.equalsIgnoreCase("")) {
@@ -147,9 +149,11 @@ public class ChannelMessageHandler {
         // Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX [Hidden]
         // Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX [HardRock]
         // :Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX
-        Pattern slot = Pattern.compile(
-                "^Slot (\\d+)(\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\d+) (.+)(\\s){11}(\\[)?([^\\[\\]]+)?(\\])?$|(Slot (\\d+)(\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\d+) (.+))");
-        Matcher sM = slot.matcher(message);
+        // TODO: Document these groups.
+        //       Have to manually parse the regex to figure out wtf group 5 is.
+        Matcher sM = RegexUtils.matcher(
+                "^Slot (\\d+)(\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\d+) (.+)(\\s){11}(\\[)?([^\\[\\]]+)?(\\])?$|(Slot (\\d+)(\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\d+) (.+))",
+                message);
         if (sM.matches()) {
             if (sM.group(5) != null) {
                 int slotN = Integer.valueOf(sM.group(1));
@@ -189,17 +193,16 @@ public class ChannelMessageHandler {
             }
         }
 
-
-        Pattern join = Pattern.compile("(.+) joined in slot (\\d+).");
         // :BanchoBot!cho@ppy.sh PRIVMSG #mp_29691447 :HyPeX joined in slot
         // 1.
-        Matcher joinMatch = join.matcher(message);
+        Matcher joinMatch = RegexUtils.matcher(
+                "(.+) joined in slot (\\d+).",
+                message);
         if (joinMatch.matches()) {
             String playerName = joinMatch.group(1);
             int jslot = Integer.valueOf(joinMatch.group(2));
             // int playerId = getId(playerName);
-            int playerId = 0;
-            playerId = m_bot.getId(playerName);
+            int playerId = m_bot.getId(playerName);
             String status = "Not Ready";
             Slot newSlot = new Slot(jslot, playerName, playerId, status);
             if (lobby.slots.containsKey(jslot)) {
@@ -216,8 +219,9 @@ public class ChannelMessageHandler {
             }
         }
 
-        Pattern move = Pattern.compile("(.+) moved to slot (\\d+)");
-        Matcher moveMatcher = move.matcher(message);
+        Matcher moveMatcher = RegexUtils.matcher(
+                "(.+) moved to slot (\\d+)",
+                message);
         if (moveMatcher.matches()) {
             int playerId = 0;
             playerId = m_bot.getId(moveMatcher.group(1));
@@ -236,8 +240,9 @@ public class ChannelMessageHandler {
 
         // :BanchoBot!cho@ppy.sh PRIVMSG #mp_32757177 :TrackpadEasy left the
         // game.
-        Pattern left = Pattern.compile("(.+) left the game.");
-        Matcher leftMatcher = left.matcher(message);
+        Matcher leftMatcher = RegexUtils.matcher(
+                "(.+) left the game.",
+                message);
         if (leftMatcher.matches()) {
             for (int i = 1; i < 17; i++) {
                 if (lobby.slots.containsKey(i)) {
@@ -277,17 +282,18 @@ public class ChannelMessageHandler {
             }
             m_bot.nextbeatmap(lobby);
             lobby.timer.continueTimer();
-				/*
-				 * Integer orderedScores[] = new Integer[(lobby.LobbySize - 1)];
-				 * orderedScores = orderScores(lobby); for (int i = 0; i < 3;
-				 * i++) { String player = lobby.scores.get(orderedScores[i]);
-				 * m_client.sendMessage(lobby.channel, player + " finished " + (i + 1) +
-				 * "!"); }
-				 */
+            /*
+             * Integer orderedScores[] = new Integer[(lobby.LobbySize - 1)];
+             * orderedScores = orderScores(lobby); for (int i = 0; i < 3;
+             * i++) { String player = lobby.scores.get(orderedScores[i]);
+             * m_client.sendMessage(lobby.channel, player + " finished " + (i + 1) +
+             * "!"); }
+             */
         }
 
-        Pattern score = Pattern.compile("(.+) has finished playing \\(Score: (.\\d), (.\\D)\\)");
-        Matcher scoreMatcher = score.matcher(message);
+        Matcher scoreMatcher = RegexUtils.matcher(
+                "(.+) has finished playing \\(Score: (.\\d), (.\\D)\\)",
+                message);
         if (scoreMatcher.matches()) {
             if (Integer.valueOf(scoreMatcher.group(2)) == 0) {
                 m_bot.addAFK(lobby, scoreMatcher.group(1));
@@ -299,8 +305,9 @@ public class ChannelMessageHandler {
 
         // Beatmap changed to: Rameses B - Neon Rainbow (ft. Anna Yvette)
         // [Easy] (https://osu.ppy.sh/b/961779)
-        Pattern beatmapPattern = Pattern.compile("Beatmap changed to: (.+) [(.+)] (https://osu.ppy.sh/b/(.+))");
-        Matcher beatmapMatcher = beatmapPattern.matcher(message);
+        Matcher beatmapMatcher = RegexUtils.matcher(
+                "Beatmap changed to: (.+) [(.+)] (https://osu.ppy.sh/b/(.+))",
+                message);
         if (beatmapMatcher.matches()) {
 
         }
@@ -328,12 +335,15 @@ public class ChannelMessageHandler {
                     }
                 }
                 int id = 0;
-                Pattern maprequest = Pattern.compile("add (\\d+)");
-                Matcher mapR = maprequest.matcher(message);
-                Pattern mapURL = Pattern.compile("add (.+)osu.ppy.sh/b/(\\d+)(.*)");
-                Matcher mapU = mapURL.matcher(message);
-                Pattern mapURLS = Pattern.compile("add (.+)osu.ppy.sh/s/(\\d+)(.*)");
-                Matcher mapUS = mapURLS.matcher(message);
+                Matcher mapR = RegexUtils.matcher(
+                        "add (\\d+)",
+                        message);
+                Matcher mapU = RegexUtils.matcher(
+                        "add (.+)osu.ppy.sh/b/(\\d+)(.*)",
+                        message);
+                Matcher mapUS = RegexUtils.matcher(
+                        "add (.+)osu.ppy.sh/s/(\\d+)(.*)",
+                        message);
                 if (mapR.matches()) {
                     id = Integer.valueOf(mapR.group(1));
                 } else if (mapU.matches()) {
@@ -407,8 +417,9 @@ public class ChannelMessageHandler {
                             }
                         }
                         if (lobby.limitDate) {
-                            Pattern date = Pattern.compile("(\\d+)\\-(\\d+)\\-(\\d+)(.+)");
-                            Matcher dateM = date.matcher(beatmap.date);
+                            Matcher dateM = RegexUtils.matcher(
+                                    "(\\d+)\\-(\\d+)\\-(\\d+)(.+)",
+                                    beatmap.date);
                             if (dateM.matches()) {
                                 if (Integer.valueOf(dateM.group(1)) >= lobby.maxyear
                                         || Integer.valueOf(dateM.group(1)) <= lobby.minyear) {
@@ -450,8 +461,9 @@ public class ChannelMessageHandler {
                         return;
                     }
                 }
-                Pattern mapURL = Pattern.compile("adddt (.+)osu.ppy.sh/b/(\\d+)(.*)");
-                Matcher mapU = mapURL.matcher(message);
+                Matcher mapU = RegexUtils.matcher(
+                        "adddt (.+)osu.ppy.sh/b/(\\d+)(.*)",
+                        message);
                 int id = 0;
                 if (mapU.matches()) {
                     id = Integer.valueOf(mapU.group(2));
@@ -520,8 +532,9 @@ public class ChannelMessageHandler {
                             }
                         }
                         if (lobby.limitDate) {
-                            Pattern date = Pattern.compile("(\\d+)\\-(\\d+)\\-(\\d+)(.+)");
-                            Matcher dateM = date.matcher(beatmap.date);
+                            Matcher dateM = RegexUtils.matcher(
+                                    "(\\d+)\\-(\\d+)\\-(\\d+)(.+)",
+                                    beatmap.date);
                             if (dateM.matches()) {
                                 if (Integer.valueOf(dateM.group(1)) >= lobby.maxyear
                                         || Integer.valueOf(dateM.group(1)) <= lobby.minyear) {
@@ -621,8 +634,9 @@ public class ChannelMessageHandler {
                 }
                 m_client.sendMessage(lobby.channel, playlist);
             } else if (args[0].equalsIgnoreCase("select")) {
-                Pattern select = Pattern.compile("select (.+)");
-                Matcher sm = select.matcher(message);
+                Matcher sm = RegexUtils.matcher(
+                        "select (.+)",
+                        message);
                 if (!sm.matches()) {
                     m_client.sendMessage(lobby.channel,
                             "Incorrect usage, please do !select [number]. Please consider using the number in []");
@@ -639,8 +653,9 @@ public class ChannelMessageHandler {
             } else if (args[0].equalsIgnoreCase("maxdiff")) {
                 for (int ID : lobby.OPs) {
                     if (ID == (m_bot.getId(sender))) {
-                        Pattern maxdiff = Pattern.compile("maxdiff (\\d+(?:\\.\\d+)?)");
-                        Matcher diffM = maxdiff.matcher(message);
+                        Matcher diffM = RegexUtils.matcher(
+                                "maxdiff (\\d+(?:\\.\\d+)?)",
+                                message);
                         if (diffM.matches()) {
                             lobby.maxDifficulty = Double.valueOf(diffM.group(1));
                             m_client.sendMessage(lobby.channel, "Max difficulty now is " + diffM.group(1));
@@ -657,8 +672,9 @@ public class ChannelMessageHandler {
             } else if (args[0].equalsIgnoreCase("mode")) {
                 for (int ID : lobby.OPs) {
                     if (ID == (m_bot.getId(sender))) {
-                        Pattern mode = Pattern.compile("mode (.+)");
-                        Matcher modeMatch = mode.matcher(message);
+                        Matcher modeMatch = RegexUtils.matcher(
+                                "mode (.+)",
+                                message);
                         if (modeMatch.matches()) {
                             if (modeMatch.group(1).equalsIgnoreCase("mania")) {
                                 lobby.type = "3";
@@ -714,8 +730,9 @@ public class ChannelMessageHandler {
             } else if (args[0].equalsIgnoreCase("lobby")) {
                 for (int ID : lobby.OPs) {
                     if (ID == (m_bot.getId(sender))) {
-                        Pattern setting = Pattern.compile("lobby (.+) (.*)");
-                        Matcher settingMatcher = setting.matcher(message);
+                        Matcher settingMatcher = RegexUtils.matcher(
+                                "lobby (.+) (.*)",
+                                message);
                         if (settingMatcher.matches()) {
 
                         }
@@ -732,10 +749,12 @@ public class ChannelMessageHandler {
             } else if (args[0].equalsIgnoreCase("kick")) {
                 for (int ID : lobby.OPs) {
                     if (ID == (m_bot.getId(sender))) {
-                        Pattern id = Pattern.compile("kick (\\d+)");
-                        Pattern name = Pattern.compile("kick (.+)");
-                        Matcher idmatch = id.matcher(message);
-                        Matcher namematch = name.matcher(message);
+                        Matcher idmatch = RegexUtils.matcher(
+                                "kick (\\d+)",
+                                message);
+                        Matcher namematch = RegexUtils.matcher(
+                                "kick (.+)",
+                                message);
                         if (idmatch.matches()) {
                             m_client.sendMessage(lobby.channel, "!mp kick #" + idmatch.group(1));
                             return;
@@ -756,8 +775,9 @@ public class ChannelMessageHandler {
             } else if (args[0].equalsIgnoreCase("addop")) {
                 for (int ID : lobby.OPs) {
                     if (ID == (m_bot.getId(sender))) {
-                        Pattern maxdiff = Pattern.compile("addop (\\d+)");
-                        Matcher diffM = maxdiff.matcher(message);
+                        Matcher diffM = RegexUtils.matcher(
+                                "addop (\\d+)",
+                                message);
                         if (diffM.matches()) {
                             lobby.OPs.add(Integer.valueOf(diffM.group(1)));
                         }
@@ -779,8 +799,9 @@ public class ChannelMessageHandler {
             } else if (args[0].equalsIgnoreCase("password")) {
                 for (int ID : lobby.OPs) {
                     if (ID == (m_bot.getId(sender))) {
-                        Pattern pw = Pattern.compile("password (.+)?");
-                        Matcher pwmatch = pw.matcher(message);
+                        Matcher pwmatch = RegexUtils.matcher(
+                                "password (.+)?",
+                                message);
                         if (pwmatch.matches()) {
                             if (pwmatch.groupCount() == 1) {
                                 if (pwmatch.group(1).equalsIgnoreCase("reset")) {
@@ -798,8 +819,7 @@ public class ChannelMessageHandler {
             } else if (args[0].equalsIgnoreCase("mindiff")) {
                 for (int ID : lobby.OPs) {
                     if (ID == (m_bot.getId(sender))) {
-                        Pattern maxdiff = Pattern.compile("mindiff (.+)");
-                        Matcher diffM = maxdiff.matcher(message);
+                        Matcher diffM = RegexUtils.matcher("mindiff (.+)", message);
                         if (diffM.matches()) {
                             lobby.minDifficulty = Double.valueOf(diffM.group(1));
                             m_client.sendMessage(lobby.channel, "New minimum difficulty is " + diffM.group(1));
@@ -810,8 +830,9 @@ public class ChannelMessageHandler {
             } else if (args[0].equalsIgnoreCase("maxar")) {
                 for (int ID : lobby.OPs) {
                     if (ID == (m_bot.getId(sender))) {
-                        Pattern maxdiff = Pattern.compile("maxar (.+)");
-                        Matcher diffM = maxdiff.matcher(message);
+                        Matcher diffM = RegexUtils.matcher(
+                                "maxar (.+)",
+                                message);
                         if (diffM.matches()) {
                             lobby.maxAR = Double.valueOf(diffM.group(1));
                             if (lobby.maxAR == 0.0)
@@ -828,8 +849,9 @@ public class ChannelMessageHandler {
             } else if (args[0].equalsIgnoreCase("maxyear")) {
                 for (int ID : lobby.OPs) {
                     if (ID == (m_bot.getId(sender))) {
-                        Pattern maxyr = Pattern.compile("maxyear (.+)");
-                        Matcher yrM = maxyr.matcher(message);
+                        Matcher yrM = RegexUtils.matcher(
+                                "maxyear (.+)",
+                                message);
                         if (yrM.matches()) {
                             if (Integer.valueOf(yrM.group(1)) < lobby.minyear) {
                                 m_client.sendMessage(lobby.channel,
@@ -848,8 +870,9 @@ public class ChannelMessageHandler {
             } else if (args[0].equalsIgnoreCase("minyear")) {
                 for (int ID : lobby.OPs) {
                     if (ID == (m_bot.getId(sender))) {
-                        Pattern minyr = Pattern.compile("minyear (.+)");
-                        Matcher yrM = minyr.matcher(message);
+                        Matcher yrM = RegexUtils.matcher(
+                                "minyear (.+)",
+                                message);
                         if (yrM.matches()) {
                             if (Integer.valueOf(yrM.group(1)) > lobby.maxyear) {
                                 m_client.sendMessage(lobby.channel,
@@ -875,8 +898,9 @@ public class ChannelMessageHandler {
             } else if (args[0].equalsIgnoreCase("duration")) {
                 for (int ID : lobby.OPs) {
                     if (ID == (m_bot.getId(sender))) {
-                        Pattern minyr = Pattern.compile("duration (.+)");
-                        Matcher yrM = minyr.matcher(message);
+                        Matcher yrM = RegexUtils.matcher(
+                                "duration (.+)",
+                                message);
                         if (yrM.matches()) {
                             lobby.maxLength = Integer.valueOf(yrM.group(1));
                             String length = "";
@@ -909,8 +933,9 @@ public class ChannelMessageHandler {
             } else if (args[0].equalsIgnoreCase("rename")) {
                 for (int ID : lobby.OPs) {
                     if (ID == (m_bot.getId(sender))) {
-                        Pattern rename = Pattern.compile("rename (.+)");
-                        Matcher renameM = rename.matcher(message);
+                        Matcher renameM = RegexUtils.matcher(
+                                "rename (.+)",
+                                message);
                         if (renameM.matches()) {
                             lobby.name = renameM.group(1);
                         }
@@ -922,8 +947,9 @@ public class ChannelMessageHandler {
                     m_client.sendMessage(lobby.channel, "I'm afraid " + sender + "i cant let you do that.");
                     return;
                 }
-                Pattern say = Pattern.compile("say (.+)");
-                Matcher sayM = say.matcher(message);
+                Matcher sayM = RegexUtils.matcher(
+                        "say (.+)",
+                        message);
                 if (sayM.matches()) {
                     m_client.sendMessage(lobby.channel, sayM.group(1));
                 } else {
