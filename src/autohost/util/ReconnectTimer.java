@@ -1,11 +1,11 @@
 package autohost.util;
 
-import autohost.Autohost;
+import autohost.AutoHost;
 import autohost.IRCBot;
 
 public class ReconnectTimer extends Thread {
 
-	private Autohost client;
+	private AutoHost client;
 	private IRCBot lobby;
 	private boolean stopped = false;
 	private long prevTime = System.currentTimeMillis();
@@ -13,7 +13,7 @@ public class ReconnectTimer extends Thread {
 	private long Timeout = 128 * 1000;
 	private boolean added = false;
 
-	public ReconnectTimer(IRCBot client, Autohost host) {
+	public ReconnectTimer(IRCBot client, AutoHost host) {
 		this.lobby = client;
 		this.client = host;
 	}

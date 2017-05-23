@@ -4,16 +4,18 @@ import java.io.IOException;
 import java.net.UnknownHostException;
 
 
-public class Autohost {
-    public static Autohost    AutoHost;
+public class AutoHost {
+    public static final String VERSION = "2.8";
+
+    public static autohost.AutoHost AutoHost;
     public Config             config;
     public IRCBot irc;
 
     public static void main(String[] args) throws Exception {
-        AutoHost = new Autohost();
+        AutoHost = new AutoHost();
     }
 
-    public Autohost() throws IOException {
+    public AutoHost() throws IOException {
         this.config = new Config("config.properties");
         this.irc = new IRCBot(this, config);
     }

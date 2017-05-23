@@ -3,7 +3,6 @@ package autohost;
 import autohost.handler.ChannelMessageHandler;
 import autohost.irc.IRCClient;
 import autohost.util.*;
-import jdk.nashorn.internal.runtime.regexp.joni.Regex;
 import lt.ekgame.beatmap_analyzer.calculator.Performance;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapException;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapParser;
@@ -26,10 +25,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.channels.Channel;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
@@ -53,7 +50,7 @@ public class IRCBot {
 	public Queue<Lobby> LobbyCreation = new LinkedList<>();
 	public Queue<Lobby> DeadLobbies = new LinkedList<>();
 
-	public Autohost autohost;
+	public AutoHost autohost;
 	Config configuration;
 	// TODO: This should be a BiMap
 	public Map<Integer, String> usernames = new HashMap<>();
@@ -68,7 +65,7 @@ public class IRCBot {
 	// Main code
 
 	@SuppressWarnings("static-access")
-	public IRCBot(Autohost autohost, Config config) throws IOException {
+	public IRCBot(AutoHost autohost, Config config) throws IOException {
 		// Define all settings. Meh.
 		this.autohost = autohost;
 		this.configuration = config;
@@ -83,7 +80,7 @@ public class IRCBot {
 		connect();
 	}
 
-	public IRCBot(Autohost autohost, Config config, Map<String, Lobby> Lobbies, Queue<Lobby> LobbyCreation,
+	public IRCBot(AutoHost autohost, Config config, Map<String, Lobby> Lobbies, Queue<Lobby> LobbyCreation,
                   Queue<Lobby> DeadLobbies, Map<Integer, String> usernames) throws IOException {
 		// Define all settings. Meh.
 		this.autohost = autohost;

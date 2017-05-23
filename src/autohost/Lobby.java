@@ -142,4 +142,11 @@ public class Lobby {
 		}
 		return didvote;
 	}
+
+    public boolean isOP(int userId) {
+        for (int id : OPs) {
+            if (id == userId) return true;
+        }
+        return false;
+    }
 }
