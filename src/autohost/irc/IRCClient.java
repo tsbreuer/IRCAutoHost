@@ -40,9 +40,13 @@ public class IRCClient {
         return m_socket.getInputStream();
     }
 
-    public String getUser() { return m_user; }
+    public String getUser() {
+        return m_user;
+    }
 
-    Map<String, RateLimitedChannel> getChannels() { return m_channels; }
+    Map<String, RateLimitedChannel> getChannels() {
+        return m_channels;
+    }
 
     public void connect() throws IOException {
         m_socket = new Socket(m_address, m_port);
@@ -50,6 +54,8 @@ public class IRCClient {
 
         m_flusher = new RateLimitedFlusher(this, m_delay);
         m_flusher.start();
+
+        register();
     }
 
     public void disconnect() throws IOException {
@@ -68,7 +74,7 @@ public class IRCClient {
         m_outStream.println(message);
     }
 
-    public void register() {
+    private void register() {
         write("PASS" + " " + m_password, true);
         write("NICK" + " " + m_user);
         write("USER" + " " + m_user + " HyPeX irc.ppy.sh : Osu! Autohost Bot");

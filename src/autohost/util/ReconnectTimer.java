@@ -1,20 +1,19 @@
-package autohost.utils;
+package autohost.util;
 
 import autohost.Autohost;
-import autohost.IRCClient;
-import autohost.Lobby;
+import autohost.IRCBot;
 
 public class ReconnectTimer extends Thread {
 
 	private Autohost client;
-	private IRCClient lobby;
+	private IRCBot lobby;
 	private boolean stopped = false;
 	private long prevTime = System.currentTimeMillis();
 	private long startTime;
 	private long Timeout = 128 * 1000;
 	private boolean added = false;
 
-	public ReconnectTimer(IRCClient client, Autohost host) {
+	public ReconnectTimer(IRCBot client, Autohost host) {
 		this.lobby = client;
 		this.client = host;
 	}
@@ -22,7 +21,7 @@ public class ReconnectTimer extends Thread {
 	public void stopTimer() {
 		stopped = true;
 	}
-	
+
 	public void continueTimer(){
 		stopped = false;
 	}
@@ -45,7 +44,7 @@ public class ReconnectTimer extends Thread {
 		while (!stopped) {
 			// System.out.println("tick");
 			long currTime = System.currentTimeMillis();
-			
+
 			if (currTime-lobby.LastConnection > Timeout){
 				client.ReconnectAutoHost();
 			}

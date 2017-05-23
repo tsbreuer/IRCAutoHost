@@ -1,4 +1,4 @@
-package autohost.utils;
+package autohost.util;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -48,7 +48,7 @@ public class Beatmap {
 
 	public Beatmap(JSONObject obj) throws JSONException {
 		this.DT = this.NC = this.HT = false;
-		this.gamemode = obj.getString("mode"); 
+		this.gamemode = obj.getString("mode");
 		this.graveyard = obj.getInt("approved");
 		this.artist = obj.getString("artist");
 		this.title = obj.getString("title");
@@ -79,21 +79,21 @@ public class Beatmap {
 		}
 	}
 // Parsing from osusearch is different. Y u do dis osusearch
-	//{"date": "2011-11-09T08:37:50", "favorites": 1623, "beatmap_status": 1, "language": "Japanese", "pass_count": 140819, 
+	//{"date": "2011-11-09T08:37:50", "favorites": 1623, "beatmap_status": 1, "language": "Japanese", "pass_count": 140819,
 	//"difficulty_cs": 4.0, "play_length": 147, "ignored": null, "map_count": 4, "genre": "Anime",
-	//"difficulty_ar": 9.0, "beatmapset": 29860, "source": "Mirai Nikki", "total_length": 155, "difficulty_hp": 8.0, 
-	//"beatmap_id": 124701, "title": "Kuusou Mesorogiwi", "mapper": "osuplayer111", "beatmapset_id": 39031, 
-	//"difficulty": 4.14548778533936, "bpm": 230, "play_count": 1383011, "artist": "Yousei Teikoku", "difficulty_od": 7.0, 
+	//"difficulty_ar": 9.0, "beatmapset": 29860, "source": "Mirai Nikki", "total_length": 155, "difficulty_hp": 8.0,
+	//"beatmap_id": 124701, "title": "Kuusou Mesorogiwi", "mapper": "osuplayer111", "beatmapset_id": 39031,
+	//"difficulty": 4.14548778533936, "bpm": 230, "play_count": 1383011, "artist": "Yousei Teikoku", "difficulty_od": 7.0,
 	//"difficulty_name": "Insane", "gamemode": 0}
 	public Beatmap(JSONObject obj, boolean b) throws JSONException {
 		this.DT = this.NC = this.HT = false;
-		this.gamemode = ""+obj.getInt("gamemode"); 
+		this.gamemode = ""+obj.getInt("gamemode");
 		this.graveyard = obj.getInt("beatmap_status");
 		this.artist = obj.getString("artist");
 		this.title = obj.getString("title");
 		this.mapper = obj.getString("mapper");
 		this.beatmap_id = obj.getInt("beatmap_id");
-		this.beatmapset_id = obj.getInt("beatmapset"); 
+		this.beatmapset_id = obj.getInt("beatmapset");
 		this.bpm = obj.getDouble("bpm");
 		this.difficulty_name = obj.getString("difficulty_name");
 		this.difficulty = obj.getDouble("difficulty");
@@ -109,7 +109,7 @@ public class Beatmap {
 		//this.tags = obj.getString("tags").split(" "); No tags. Yeah who uses this anyway
 		this.play_count = obj.getInt("play_count");
 		this.pass_count = obj.getInt("pass_count");
-		
+
 		/* No max combo ;(
 		try {
 			this.maxcombo = obj.getInt("max_combo");

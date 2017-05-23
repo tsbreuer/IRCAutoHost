@@ -7,7 +7,7 @@ import java.net.UnknownHostException;
 public class Autohost {
     public static Autohost    AutoHost;
     public Config             config;
-    public IRCClient          irc;
+    public IRCBot irc;
 
     public static void main(String[] args) throws Exception {
         AutoHost = new Autohost();
@@ -15,13 +15,13 @@ public class Autohost {
 
     public Autohost() throws IOException {
         this.config = new Config("config.properties");
-        this.irc = new IRCClient(this, config);
+        this.irc = new IRCBot(this, config);
     }
 
     public void ReconnectAutoHost() {
         try {
             this.irc.stopIRC();
-            this.irc = new IRCClient(this, config, irc.Lobbies, irc.LobbyCreation, irc.DeadLobbies, irc.usernames);
+            this.irc = new IRCBot(this, config, irc.getLobbies(), irc.LobbyCreation, irc.DeadLobbies, irc.usernames);
         } catch (UnknownHostException e) {
             e.printStackTrace();
         } catch (IOException e) {

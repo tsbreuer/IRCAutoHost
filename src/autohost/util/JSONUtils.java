@@ -1,4 +1,4 @@
-package autohost.utils;
+package autohost.util;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
