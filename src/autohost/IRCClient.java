@@ -30,6 +30,7 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.json.JSONArray;
@@ -423,11 +424,9 @@ public class IRCClient {
 			// Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX [Hidden]
 			// Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX [HardRock]
 			// :Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX
-			Pattern slot = Pattern.compile(
-					"^Slot (\\d+)(\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\d+) (.+)(\\s){11}(\\[)?([^\\[\\]]+)?(\\])?$|(Slot (\\d+)(\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\d+) (.+))");
+			Pattern slot = Pattern.compile("^Slot (\\d+)(\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\d+) (.+?)(?=( *$| +(\\[)([^\\[\\]]+)?(\\])?)$)");
 			Matcher sM = slot.matcher(message);
 			if (sM.matches()) {
-				if (sM.group(5) != null) {
 					int slotN = Integer.valueOf(sM.group(1));
 					if (lobby.slots.containsKey(slotN)) {
 						Slot slotM = lobby.slots.get(slotN);
@@ -445,24 +444,6 @@ public class IRCClient {
 						lobby.slots.put(slotN, slotM);
 					}
 					return;
-				} else {
-					int slotN = Integer.valueOf(sM.group(11));
-					if (lobby.slots.containsKey(slotN)) {
-						Slot slotM = lobby.slots.get(slotN);
-						slotM.status = sM.group(13);
-						slotM.id = slotN;
-						slotM.playerid = Integer.valueOf(sM.group(14));
-						slotM.name = sM.group(15);
-						lobby.slots.replace(slotN, slotM);
-					} else {
-						Slot slotM = new Slot();
-						slotM.status = sM.group(13);
-						slotM.id = slotN;
-						slotM.playerid = Integer.valueOf(sM.group(14));
-						slotM.name = sM.group(15);
-						lobby.slots.put(slotN, slotM);
-					}
-				}
 			}
 
 
@@ -519,7 +500,6 @@ public class IRCClient {
 					if (lobby.slots.containsKey(i)) {
 						if (lobby.slots.get(i).name.equalsIgnoreCase(leftMatcher.group(1))) {
 							lobby.slots.remove(i);
-							tryStart(lobby);
 						}
 					}
 				}
@@ -560,7 +540,7 @@ public class IRCClient {
 				 */
 			}
 
-			Pattern score = Pattern.compile("(.+) has finished playing \\(Score: (.\\d), (.\\D)\\)");
+			Pattern score = Pattern.compile("(.+) has finished playing \\(Score: (\\d+), (\\D+)\\)");
 			Matcher scoreMatcher = score.matcher(message);
 			if (scoreMatcher.matches()) {
 				if (Integer.valueOf(scoreMatcher.group(2)) == 0) {
@@ -594,6 +574,10 @@ public class IRCClient {
 			message = message.substring(1);
 			String[] args = message.split(" ");
 			if (args[0].equals("add")) {
+				if (lobby.lockAdding){
+					SendMessage(lobby.channel, Sender + " sorry, beatmap requesting is currently disabled.");
+					return;
+				}
 				for (Beatmap beatmap : lobby.beatmapQueue) {
 					if (beatmap.RequestedBy == getId(Sender)) {
 						SendMessage(lobby.channel, Sender + " you have already requested a beatmap!");
@@ -717,6 +701,10 @@ public class IRCClient {
 				}
 
 			} else if (args[0].equalsIgnoreCase("adddt")) {
+				if (lobby.lockAdding){
+					SendMessage(lobby.channel, Sender + " sorry, beatmap requesting is currently disabled.");
+					return;
+				}
 				for (Beatmap beatmap : lobby.beatmapQueue) {
 					if (beatmap.RequestedBy == getId(Sender)) {
 						SendMessage(lobby.channel, Sender + " you have already requested a beatmap!");
@@ -881,7 +869,7 @@ public class IRCClient {
 				}
 			} else if (args[0].equalsIgnoreCase("info")) {
 				SendMessage(lobby.channel,
-						"This is an in-development IRC version of autohost developed by HyPeX. Do !commands to know them ;) [https://discord.gg/UDabf2y Discord] [Reddit Thread](https://www.reddit.com/r/osugame/comments/67u0k9/autohost_bot_is_finally_ready_for_public_usage/)");
+						"This is an in-development IRC version of autohost developed by HyPeX. Do !commands to know them ;) [https://discord.gg/UDabf2y Discord] [https://www.reddit.com/r/osugame/comments/67u0k9/autohost_bot_is_finally_ready_for_public_usage/ Reddit Thread]");
 
 			} else if (args[0].equalsIgnoreCase("commands")) {
 				SendMessage(lobby.channel,
@@ -974,6 +962,20 @@ public class IRCClient {
 					}
 				}
 				SendMessage(lobby.channel, Sender + " You're not an Operator!");
+			} else if (args[0].equalsIgnoreCase("lock")) {
+				for (int ID : lobby.OPs) {
+					if (ID == (getId(Sender))) {
+						if (lobby.lockAdding) {
+							SendMessage(lobby.channel, "Map requests are now enabled.");
+							lobby.lockAdding=false;
+						} else {
+							lobby.lockAdding=true;
+							SendMessage(lobby.channel, "Map requests are now disabled.");
+						}
+						return;
+					}
+				}
+				SendMessage(lobby.channel, Sender + " You're not an Operator!");
 
 			} else if (args[0].equalsIgnoreCase("ver")) {
 				SendMessage(lobby.channel, "Bot version is 2.8");
@@ -1017,7 +1019,7 @@ public class IRCClient {
 								Slot slot = lobby.slots.get(i);
 								if (slot != null)
 									if (slot.name.toLowerCase().contains(namematch.group(1).toLowerCase())) {
-										SendMessage(lobby.channel, "!mp kick #" + slot.id);
+										SendMessage(lobby.channel, "!mp kick #" + slot.playerid);
 										return;
 									}
 							}
@@ -1359,9 +1361,11 @@ public class IRCClient {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
-		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
+		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig)
+				.build();
 		URI uri = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/api/get_beatmaps")
 				.setParameter("k", configuration.apikey).setParameter("b", "" + beatmapId).setParameter("m", lobby.type)
+				
 				.build();
 		HttpGet request = new HttpGet(uri);
 		HttpResponse response = httpClient.execute(request);
@@ -1406,7 +1410,7 @@ public class IRCClient {
 
 		return score;
 	}
-
+/*
 	public void playerLeft(Lobby lobby) {
 		int ready = 0;
 		int players = 0;
@@ -1446,7 +1450,7 @@ public class IRCClient {
 			nextbeatmap(lobby);
 		}
 	}
-
+*/	
 	public void tryStart(Lobby lobby) {
 		int ready = 0;
 		int players = 0;
@@ -1521,6 +1525,7 @@ public class IRCClient {
 				int id = beatmap.getInt("beatmap_id");
 				if (id == lastBeatmap) {
 					int score = beatmap.getInt("score");
+					int maxcombo = beatmap.getInt("maxcombo");
 					int c50s = beatmap.getInt("count50");
 					int c100s = beatmap.getInt("count100");
 					int c300s = beatmap.getInt("count300");
@@ -1540,7 +1545,7 @@ public class IRCClient {
 						modsString = "NOMOD";
 					SendMessage(lobby.channel,
 							user + " || Rank: " + rank + " || Mods: " + modsString + " || Hits: " + c300s + "/" + c100s
-									+ "/" + c50s + "/" + miss + " || Combo: (" + ppcalc.getMaxCombo() + "/"
+									+ "/" + c50s + "/" + miss + " || Combo: (" + maxcombo + "/"
 									+ ppcalc.getMaxCombo() + ") || " + String.format("%.02f", +acc * 100) + "% || PP: "
 									+ String.format("%.02f", pp) + " ");
 
@@ -1634,13 +1639,19 @@ public class IRCClient {
 					nextbeatmap(lobby);
 					return;
 				}
-
 				String mode = "" + obj.getInt("gamemode");
 				if (!mode.equals(lobby.type)) {
 					SendMessage(lobby.channel, "ERORR: The random beatmap did not fit this lobby's gamemode!");
 					return;
 				}
 				Beatmap beatmap = new Beatmap(obj, true);
+				beatmapFile bm = getPeppyPoints(beatmap.beatmap_id,lobby);
+				if (bm == null){
+					SendMessage(lobby.channel, "An error ocurred while loading the random beatmap.");
+					SendMessage(lobby.channel, "Maybe it doesnt exist anymore? Retrying");
+					nextbeatmap(lobby);
+					return;
+				}
 				if (lobby.onlyDifficulty) { // Does the lobby have
 											// locked difficulty limits?
 					if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) { // Are
@@ -1733,12 +1744,15 @@ public class IRCClient {
 			date_start = lobby.minyear + "-1-1";
 			date_end = lobby.maxyear + "-1-1";
 		}
-		URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/query/")
+		URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/random/")
 				.setParameter("statuses", status).setParameter("modes", mode).setParameter("order", "-difficulty")
 				.setParameter("max_length", "300").setParameter("star", "( " + mindiff + "," + maxdiff + ")")
 				.setParameter("date_start", date_start).setParameter("date_end", date_end)
+				.setParameter("ammount", "5")
 				.setParameter("ar", "( 0," + maxAR + ")").build();
 		HttpGet request = new HttpGet(uri);
+		request.setHeader("Accept", "json");
+		
 		HttpResponse response = httpClient.execute(request);
 		InputStream content = response.getEntity().getContent();
 		String stringContent = IOUtils.toString(content, "UTF-8");
