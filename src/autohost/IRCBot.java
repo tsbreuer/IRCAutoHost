@@ -464,7 +464,8 @@ public class IRCBot {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
-		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
+        HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig)
+                .build();
 		URI uri = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/api/get_beatmaps")
 				.setParameter("k", configuration.apikey).setParameter("b", "" + beatmapId).setParameter("m", lobby.type)
 				.build();
@@ -512,6 +513,7 @@ public class IRCBot {
 		return score;
 	}
 
+/*
 	public void playerLeft(Lobby lobby) {
 		int ready = 0;
 		int players = 0;
@@ -551,6 +553,7 @@ public class IRCBot {
 			nextbeatmap(lobby);
 		}
 	}
+*/
 
 	public void tryStart(Lobby lobby) {
 		int ready = 0;
@@ -626,6 +629,7 @@ public class IRCBot {
 				int id = beatmap.getInt("beatmap_id");
 				if (id == lastBeatmap) {
 					int score = beatmap.getInt("score");
+					int maxcombo = beatmap.getInt("maxcombo");
 					int c50s = beatmap.getInt("count50");
 					int c100s = beatmap.getInt("count100");
 					int c300s = beatmap.getInt("count300");
@@ -644,11 +648,13 @@ public class IRCBot {
 					if (modsString.equalsIgnoreCase(""))
 						modsString = "NOMOD";
 					m_client.sendMessage(lobby.channel,
-							user + " || Rank: " + rank + " || Mods: " + modsString + " || Hits: " + c300s + "/" + c100s
-									+ "/" + c50s + "/" + miss + " || Combo: (" + ppcalc.getMaxCombo() + "/"
-									+ ppcalc.getMaxCombo() + ") || " + String.format("%.02f", +acc * 100) + "% || PP: "
-									+ String.format("%.02f", pp) + " ");
-
+							user
+                                    + " || Rank: " + rank
+                                    + " || Mods: " + modsString
+                                    + " || Hits: " + c300s + "/" + c100s + "/" + c50s + "/" + miss
+                                    + " || Combo: (" + ppcalc.getMaxCombo() + "/" + maxcombo
+                                    + ") || " + String.format("%.02f", +acc * 100)
+                                    + "% || PP: " + String.format("%.02f", pp) + " ");
 				}
 			}
 
@@ -746,6 +752,15 @@ public class IRCBot {
 					return;
 				}
 				Beatmap beatmap = JSONUtils.silentGetBeatmap(obj, true);
+				beatmapFile bm = getPeppyPoints(beatmap.beatmap_id, lobby);
+				if (bm == null) {
+				    m_client.sendMessage(lobby.channel,
+                            "An error ocurred while loading the random beatmap.");
+                    m_client.sendMessage(lobby.channel,
+                            "Maybe it doesnt exist anymore? Retrying");
+                    nextbeatmap(lobby);
+                    return;
+                }
 				if (lobby.onlyDifficulty) { // Does the lobby have
 											// locked difficulty limits?
 					if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) { // Are
@@ -838,12 +853,15 @@ public class IRCBot {
 			date_start = lobby.minyear + "-1-1";
 			date_end = lobby.maxyear + "-1-1";
 		}
-		URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/query/")
+		URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/random/")
 				.setParameter("statuses", status).setParameter("modes", mode).setParameter("order", "-difficulty")
 				.setParameter("max_length", "300").setParameter("star", "( " + mindiff + "," + maxdiff + ")")
 				.setParameter("date_start", date_start).setParameter("date_end", date_end)
+                .setParameter("ammount", "5")
 				.setParameter("ar", "( 0," + maxAR + ")").build();
 		HttpGet request = new HttpGet(uri);
+		request.setHeader("Accept", "json");
+
 		HttpResponse response = httpClient.execute(request);
 		InputStream content = response.getEntity().getContent();
 		String stringContent = IOUtils.toString(content, "UTF-8");

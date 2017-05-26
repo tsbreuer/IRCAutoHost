@@ -68,6 +68,8 @@ public class Lobby {
 	public int minyear = 2011;
 	public int maxyear = 2100;
 
+	public Boolean lockAdding = false;
+
 	public String teamgamemode; // Team Type of the lobby. Solo? TeamVs?
 
 	public String winCondition; // Win type. Score, Scorev2, etc

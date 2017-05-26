@@ -149,45 +149,26 @@ public class ChannelMessageHandler {
         // TODO: Document these groups.
         //       Have to manually parse the regex to figure out wtf group 5 is.
         Matcher sM = RegexUtils.matcher(
-                "^Slot (\\d+)(\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\d+) (.+)(\\s){11}(\\[)?([^\\[\\]]+)?(\\])?$|(Slot (\\d+)(\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\d+) (.+))",
+                "\"^Slot (\\\\d+)(\\\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\\\d+) (.+?)(?=( *$| +(\\\\[)([^\\\\[\\\\]]+)?(\\\\])?)$)\"",
                 message);
         if (sM.matches()) {
-            if (sM.group(5) != null) {
-                int slotN = Integer.valueOf(sM.group(1));
-                if (lobby.slots.containsKey(slotN)) {
-                    Slot slotM = lobby.slots.get(slotN);
-                    slotM.status = sM.group(3);
-                    slotM.id = slotN;
-                    slotM.playerid = Integer.valueOf(sM.group(4));
-                    slotM.name = sM.group(5);
-                    lobby.slots.replace(slotN, slotM);
-                } else {
-                    Slot slotM = new Slot();
-                    slotM.status = sM.group(3);
-                    slotM.id = slotN;
-                    slotM.playerid = Integer.valueOf(sM.group(4));
-                    slotM.name = sM.group(5);
-                    lobby.slots.put(slotN, slotM);
-                }
-                return;
+            int slotN = Integer.valueOf(sM.group(1));
+            if (lobby.slots.containsKey(slotN)) {
+                Slot slotM = lobby.slots.get(slotN);
+                slotM.status = sM.group(3);
+                slotM.id = slotN;
+                slotM.playerid = Integer.valueOf(sM.group(4));
+                slotM.name = sM.group(5);
+                lobby.slots.replace(slotN, slotM);
             } else {
-                int slotN = Integer.valueOf(sM.group(11));
-                if (lobby.slots.containsKey(slotN)) {
-                    Slot slotM = lobby.slots.get(slotN);
-                    slotM.status = sM.group(13);
-                    slotM.id = slotN;
-                    slotM.playerid = Integer.valueOf(sM.group(14));
-                    slotM.name = sM.group(15);
-                    lobby.slots.replace(slotN, slotM);
-                } else {
-                    Slot slotM = new Slot();
-                    slotM.status = sM.group(13);
-                    slotM.id = slotN;
-                    slotM.playerid = Integer.valueOf(sM.group(14));
-                    slotM.name = sM.group(15);
-                    lobby.slots.put(slotN, slotM);
-                }
+                Slot slotM = new Slot();
+                slotM.status = sM.group(3);
+                slotM.id = slotN;
+                slotM.playerid = Integer.valueOf(sM.group(4));
+                slotM.name = sM.group(5);
+                lobby.slots.put(slotN, slotM);
             }
+            return;
         }
 
         // :BanchoBot!cho@ppy.sh PRIVMSG #mp_29691447 :HyPeX joined in slot
@@ -245,7 +226,6 @@ public class ChannelMessageHandler {
                 if (lobby.slots.containsKey(i)) {
                     if (lobby.slots.get(i).name.equalsIgnoreCase(leftMatcher.group(1))) {
                         lobby.slots.remove(i);
-                        m_bot.tryStart(lobby);
                     }
                 }
             }
@@ -289,7 +269,7 @@ public class ChannelMessageHandler {
         }
 
         Matcher scoreMatcher = RegexUtils.matcher(
-                "(.+) has finished playing \\(Score: (.\\d), (.\\D)\\)",
+                "(.+) has finished playing \\(Score: (\\d+), (\\D+)\\)",
                 message);
         if (scoreMatcher.matches()) {
             if (Integer.valueOf(scoreMatcher.group(2)) == 0) {
@@ -362,6 +342,9 @@ public class ChannelMessageHandler {
             break;
         case "graveyard":
             handleGraveyard(lobby, sender);
+            break;
+        case "lock":
+            handleLock(lobby, sender);
             break;
         case "ver":
             handleVersion(lobby);
@@ -436,6 +419,11 @@ public class ChannelMessageHandler {
     }
 
     private void handleAdd(Lobby lobby, String sender, String message) {
+        if (lobby.lockAdding) {
+            m_client.sendMessage(lobby.channel,
+                    sender + " sorry, beatmap requesting is currently disabled.");
+            return;
+        }
         for (Beatmap beatmap : lobby.beatmapQueue) {
             if (beatmap.RequestedBy == m_bot.getId(sender)) {
                 m_client.sendMessage(lobby.channel,
@@ -565,6 +553,11 @@ public class ChannelMessageHandler {
     }
 
     private void handleAddDT(Lobby lobby, String sender, String message) {
+        if (lobby.lockAdding) {
+            m_client.sendMessage(lobby.channel,
+                    sender + " sorry, beatmap requesting is currently disabled.");
+            return;
+        }
         for (Beatmap beatmap : lobby.beatmapQueue) {
             if (beatmap.RequestedBy == m_bot.getId(sender)) {
                 m_client.sendMessage(lobby.channel, sender + " you have already requested a beatmap!");
@@ -740,7 +733,7 @@ public class ChannelMessageHandler {
                 "This is an in-development IRC version of autohost developed by HyPeX. "
                         + "Do !commands to know them ;) "
                         + "[https://discord.gg/UDabf2y Discord] "
-                        + "[Reddit Thread](https://www.reddit.com/r/osugame/comments/67u0k9/autohost_bot_is_finally_ready_for_public_usage/)");
+                        + "[https://www.reddit.com/r/osugame/comments/67u0k9/autohost_bot_is_finally_ready_for_public_usage/ Reddit Thread]");
     }
 
     private void handleCommands(Lobby lobby) {
@@ -873,6 +866,21 @@ public class ChannelMessageHandler {
         }
     }
 
+    private void handleLock(Lobby lobby, String sender) {
+        if (!lobby.isOP(m_bot.getId(sender))) {
+            m_client.sendMessage(lobby.channel, sender + ", you're not an Operator!");
+            return;
+        }
+
+        if (lobby.lockAdding) {
+            m_client.sendMessage(lobby.channel, "Map requests are now enabled.");
+            lobby.lockAdding = false;
+        } else {
+            m_client.sendMessage(lobby.channel, "Map requests are now disabled.");
+            lobby.lockAdding=true;
+        }
+    }
+
     private void handleVersion(Lobby lobby) {
         m_client.sendMessage(lobby.channel, "Bot version is " + AutoHost.VERSION);
     }
@@ -921,7 +929,7 @@ public class ChannelMessageHandler {
                 Slot slot = lobby.slots.get(i);
                 if (slot != null)
                     if (slot.name.toLowerCase().contains(namematch.group(1).toLowerCase())) {
-                        m_client.sendMessage(lobby.channel, "!mp kick #" + slot.id);
+                        m_client.sendMessage(lobby.channel, "!mp kick #" + slot.playerid);
                         return;
                     }
             }
