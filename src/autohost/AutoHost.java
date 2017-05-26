@@ -3,7 +3,6 @@ package autohost;
 import java.io.IOException;
 import java.net.UnknownHostException;
 
-
 public class AutoHost {
     public static final String VERSION = "2.8";
 

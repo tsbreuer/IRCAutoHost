@@ -1,4 +1,4 @@
 *.class
+target/
 config.properties
 .ideaModules/
-libs/

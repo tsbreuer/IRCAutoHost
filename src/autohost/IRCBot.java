@@ -3,6 +3,7 @@ package autohost;
 import autohost.handler.ChannelMessageHandler;
 import autohost.irc.IRCClient;
 import autohost.util.*;
+import autohost.util.TimerThread;
 import lt.ekgame.beatmap_analyzer.calculator.Performance;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapException;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapParser;
