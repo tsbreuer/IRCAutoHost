@@ -1,9 +1,9 @@
 package autohost;
 
 import autohost.handler.ChannelMessageHandler;
+import autohost.handler.PrivateMessageHandler;
 import autohost.irc.IRCClient;
 import autohost.util.*;
-import autohost.util.TimerThread;
 import lt.ekgame.beatmap_analyzer.calculator.Performance;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapException;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapParser;
@@ -37,22 +37,21 @@ import static autohost.util.MathUtils.round;
 import static autohost.util.TimeUtils.SECOND;
 
 public class IRCBot {
+    private Config    m_config;
     private IRCClient m_client;
     // TODO: Take another look at this and the listen() method
     private boolean   m_shouldStop;
 
     private Map<String, Lobby> m_lobbies = new HashMap<>();
-
+    private Queue<Lobby> m_deadLobbies = new LinkedList<>();
 
 	// Every single IRC client i tried fails, so i decided to make my own with
 	// blackjack & hookers.
 	// Blackjack
 	// Hookers
 	public Queue<Lobby> LobbyCreation = new LinkedList<>();
-	public Queue<Lobby> DeadLobbies = new LinkedList<>();
 
 	public AutoHost autohost;
-	Config configuration;
 	// TODO: This should be a BiMap
 	public Map<Integer, String> usernames = new HashMap<>();
 
@@ -69,7 +68,7 @@ public class IRCBot {
 	public IRCBot(AutoHost autohost, Config config) throws IOException {
 		// Define all settings. Meh.
 		this.autohost = autohost;
-		this.configuration = config;
+        m_config = config;
         m_client = new autohost.irc.IRCClient(
                 config.server,
                 6667,
@@ -82,10 +81,10 @@ public class IRCBot {
 	}
 
 	public IRCBot(AutoHost autohost, Config config, Map<String, Lobby> Lobbies, Queue<Lobby> LobbyCreation,
-                  Queue<Lobby> DeadLobbies, Map<Integer, String> usernames) throws IOException {
+                  Queue<Lobby> deadLobbies, Map<Integer, String> usernames) throws IOException {
 		// Define all settings. Meh.
 		this.autohost = autohost;
-		this.configuration = config;
+        m_config = config;
         m_client = new autohost.irc.IRCClient(
                 config.server,
                 6667,
@@ -95,7 +94,7 @@ public class IRCBot {
 		this.isReconnecting = true;
 		System.out.println("Reconnect lobbies: " + Lobbies.size());
 		this.m_lobbies = Lobbies;
-		this.DeadLobbies = DeadLobbies;
+        m_deadLobbies = deadLobbies;
 		this.usernames = usernames;
 		this.LobbyCreation = LobbyCreation;
 		// Mods definition, ignore
@@ -107,8 +106,16 @@ public class IRCBot {
         return m_client;
     }
 
+    public Config getConfig() {
+        return m_config;
+    }
+
     public Map<String, Lobby> getLobbies() {
         return m_lobbies;
+    }
+
+    public Queue<Lobby> getDeadLobbies() {
+        return m_deadLobbies;
     }
 
     public void connect() throws IOException {
@@ -213,7 +220,7 @@ public class IRCBot {
 			if (target.startsWith("#")) {
 			    new ChannelMessageHandler(this).handle(target, user, message);
             } else {
-                PrivateMessage(target, user, message);
+			    new PrivateMessageHandler(this).handle(user, message);
             }
 		}
 
@@ -240,7 +247,7 @@ public class IRCBot {
 		lobby.OPLobby = isOP;
 		lobby.creatorName = creator;
 		LobbyCreation.add(lobby);
-		for (int op : configuration.ops) {
+		for (int op : m_config.ops) {
 			if (op != getId(creator))
 				lobby.OPs.add(op);
 		}
@@ -268,7 +275,7 @@ public class IRCBot {
 		lobby.creatorName = creator;
 		lobby.rejoined = true;
 		LobbyCreation.add(lobby);
-		for (int op : configuration.ops) {
+		for (int op : m_config.ops) {
 			if (op != getId(creator))
 				lobby.OPs.add(op);
 		}
@@ -342,7 +349,7 @@ public class IRCBot {
 
 	public void removeLobby(Lobby lobby) {
 		synchronized (m_lobbies) {
-			DeadLobbies.add(m_lobbies.get(lobby.channel));
+            m_deadLobbies.add(m_lobbies.get(lobby.channel));
 			m_lobbies.remove(lobby.channel);
 			lobby.timer.stopTimer();
 		}
@@ -467,7 +474,7 @@ public class IRCBot {
         HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig)
                 .build();
 		URI uri = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/api/get_beatmaps")
-				.setParameter("k", configuration.apikey).setParameter("b", "" + beatmapId).setParameter("m", lobby.type)
+				.setParameter("k", m_config.apikey).setParameter("b", "" + beatmapId).setParameter("m", lobby.type)
 				.build();
 		HttpGet request = new HttpGet(uri);
 		HttpResponse response = httpClient.execute(request);
@@ -484,7 +491,7 @@ public class IRCBot {
 
 		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
 		URI uri = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/api/get_beatmaps")
-				.setParameter("k", configuration.apikey).setParameter("s", "" + beatmapId).setParameter("m", lobby.type)
+				.setParameter("k", m_config.apikey).setParameter("s", "" + beatmapId).setParameter("m", lobby.type)
 				.build();
 		HttpGet request = new HttpGet(uri);
 		HttpResponse response = httpClient.execute(request);
@@ -502,12 +509,7 @@ public class IRCBot {
 			i++;
 		}
 
-		Comparator<Integer> comp = new Comparator<Integer>() {
-			@Override
-			public int compare(Integer x, Integer y) {
-				return y - x;
-			}
-		};
+		Comparator<Integer> comp = (x, y) -> y - x;
 		Arrays.sort(score, comp);
 
 		return score;
@@ -608,7 +610,7 @@ public class IRCBot {
 					.setConnectionRequestTimeout(10000).build();
 			HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
 			URI uri = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/api/get_user_recent")
-					.setParameter("k", configuration.apikey).setParameter("u", "" + user).setParameter("type", "string")
+					.setParameter("k", m_config.apikey).setParameter("u", "" + user).setParameter("type", "string")
 					.setParameter("limit", "1").build();
 			HttpGet request = new HttpGet(uri);
 			HttpResponse response = httpClient.execute(request);
@@ -1079,207 +1081,12 @@ public class IRCBot {
 	}
 
 	public Boolean isOP(String user) {
-		for (int ID : configuration.ops) {
+		for (int ID : m_config.ops) {
 			if (ID == (getId(user))) {
 				return true;
 			}
 		}
 		return false;
-	}
-
-	public void PrivateMessage(String target, String sender, String message) {
-		System.out.println(sender + ": " + message);
-		if (sender.equalsIgnoreCase(m_client.getUser()))
-			return;
-		message = message.trim();
-		if (message.startsWith("!")) {
-			message = message.substring(1);
-			String[] args = message.split(" ");
-			if (args[0].equalsIgnoreCase("help") || args[0].equalsIgnoreCase("info")) {
-				m_client.sendMessage(sender, configuration.pmhelp);
-				int i = 0;
-				for (Lobby lobby : m_lobbies.values()) {
-					i++;
-					String password = "";
-					if (lobby.Password.equalsIgnoreCase(""))
-						password = "Password: Disabled";
-					else
-						password = "Password: Enabled";
-
-					m_client.sendMessage(sender,
-							"Lobby [" + i + "] || Name: " + lobby.name + " || Stars: " + lobby.minDifficulty + "* - "
-									+ lobby.maxDifficulty + "* || Slots: [" + lobby.slots.size() + "/16] || "
-									+ password);
-				}
-
-				return;
-			} else if (args[0].equalsIgnoreCase("reloadRooms")) {
-				if (!isOP(sender))
-					return;
-				for (Lobby lobby : m_lobbies.values()) {
-					lobby.slots.clear();
-					m_client.sendMessage(lobby.channel, "!mp settings");
-					System.out.println("Reloading " + lobby.channel);
-				}
-			} else if (args[0].equalsIgnoreCase("commands")) {
-				m_client.sendMessage(sender, "Commands: !createroom [name] | !droplobby | !recreate | !moveme [id/pasword]");
-
-			} else if (args[0].equalsIgnoreCase("globalsay")) {
-				for (int ID : configuration.ops) {
-					if (ID == (getId(sender))) {
-						Pattern globalmsg = Pattern.compile("globalsay (.+)");
-						Matcher globalmatch = globalmsg.matcher(message);
-						if (globalmatch.matches()) {
-							m_client.sendMessage(sender, "Message sent");
-							for (Lobby lobby : m_lobbies.values()) {
-								m_client.sendMessage(lobby.channel, "GlobalMessage: " + globalmatch.group(1));
-							}
-						} else {
-							m_client.sendMessage(sender, "Syntax error. Please use !globalsay [message]");
-						}
-					}
-				}
-			} else if (args[0].equalsIgnoreCase("recreate")) {
-				for (Lobby lobby : DeadLobbies) {
-					if (lobby.creatorName.equalsIgnoreCase(sender)) {
-						DeadLobbies.remove(lobby);
-						createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName,
-								lobby.OPLobby);
-						m_client.sendMessage(sender, "Lobby is being created. Please wait...");
-						return;
-					}
-				}
-			} else if (args[0].equalsIgnoreCase("droplobby")) {
-				for (Lobby lobby : DeadLobbies) {
-					if (lobby.creatorName.equalsIgnoreCase(sender)) {
-						DeadLobbies.remove(lobby);
-						m_client.sendMessage(sender, "Lobby dropped. You're now able to create a new one!");
-						return;
-					}
-				}
-			} else if (args[0].equalsIgnoreCase("reconnection")) {
-				for (int ID : configuration.ops) {
-					if (ID == (getId(sender))) {
-						try {
-							connect();
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				}
-			} else if (args[0].equalsIgnoreCase("moveme")) {
-				if (args.length >= 2) {
-					Pattern moveme = Pattern.compile("moveme (\\d+)");
-					Matcher matchMove = moveme.matcher(message);
-					if (!matchMove.matches()) {
-						Pattern movemePass = Pattern.compile("moveme (.+)");
-						Matcher matchPW = movemePass.matcher(message);
-						if (!matchPW.matches()) {
-							m_client.sendMessage(sender, "Wrong format, please use !moveme [lobby number provided by help]");
-							return;
-						} else {
-							for (Lobby lobby : m_lobbies.values()) {
-								if (lobby.Password.equals(matchPW.group(1))) {
-									if (lobby.slots.size() < lobby.LobbySize) {
-										m_client.sendMessage(lobby.channel, "!mp move " + sender);
-									} else
-										m_client.sendMessage(sender, "Lobby is full, try again later ;)");
-
-									return;
-								}
-
-							}
-							m_client.sendMessage(sender, "No lobby matched your password.");
-						}
-					}
-					if (matchMove.matches()) {
-						int moveMe = Integer.valueOf(matchMove.group(1));
-						int i = 0;
-						for (Lobby lobby : m_lobbies.values()) {
-							i++;
-							if (i == moveMe) {
-								if (lobby.slots.size() < 16) {
-									if (lobby.Password.equals("")) {
-										m_client.sendMessage(lobby.channel, "!mp move " + sender);
-									} else {
-										if (matchMove.groupCount() < 2) {
-											m_client.sendMessage(sender,
-													"The lobby you selected has a password. Please use !moveme [lobby] [pw]");
-										} else {
-											if (matchMove.group(2).equals(lobby.Password)) {
-												m_client.sendMessage(lobby.channel, "!mp move " + sender);
-											}
-										}
-									}
-								} else {
-									m_client.sendMessage(sender, "Lobby is full, sorry");
-								}
-							}
-						}
-						return;
-					}
-				}
-			} else if (args[0].equalsIgnoreCase("createroom")) {
-				Boolean isOP = false;
-				if (args.length <= 1) {
-					m_client.sendMessage(sender, "Please include all arguments. Usage: !createroom <name>");
-					return;
-				}
-				for (int ID : configuration.ops) {
-					if (ID == (getId(sender))) {
-						isOP = true;
-						break;
-					}
-				}
-				if (!isOP) {
-					for (Lobby lobby : m_lobbies.values()) {
-						if (lobby.creatorName.equalsIgnoreCase(sender)) {
-							m_client.sendMessage(sender, "You already have a live lobby!");
-							return;
-						}
-					}
-					for (Lobby lobby : DeadLobbies) {
-						if (lobby.creatorName.equalsIgnoreCase(sender)) {
-							m_client.sendMessage(sender,
-									"You already have an older lobby, please do !recreate to revive it, or !droplobby to remove it from the list.");
-							return;
-						}
-					}
-				}
-				Pattern roomNamePattern = Pattern.compile("createroom (.+)");
-				Matcher roomNameMatcher = roomNamePattern.matcher(message);
-				if (roomNameMatcher.matches()) {
-					// --TODO
-					String roomName = roomNameMatcher.group(1);
-					double mindiff = 4;
-					double maxdiff = 5;
-					createNewLobby(roomName, mindiff, maxdiff, sender, isOP);
-					m_client.sendMessage(sender, "Creating room, please wait 1 second and pm me !help to ask for a move");
-				} else {
-					m_client.sendMessage(sender, "Incorrect Syntax. Please use !createroom <name>");
-				}
-			} else if (args[0].equalsIgnoreCase("reconnect")) {
-				if (args.length <= 1) {
-					m_client.sendMessage(sender, "Please include a lobby id. Usage: !reconnect <mp id>");
-					return;
-				}
-				Boolean isOP = isOP(sender);
-
-				Pattern roomIDPattern = Pattern.compile("reconnect (.+)");
-				Matcher roomIDMatcher = roomIDPattern.matcher(message);
-				if (roomIDMatcher.matches()) {
-					reconnectLobby(sender, roomIDMatcher.group(1), isOP);
-				} else {
-					m_client.sendMessage(sender, "Incorrect Syntax. Please use !createroom <mindiff> <maxdiff>");
-				}
-			} else
-				m_client.sendMessage(sender, "Unrecognized Command. Please check !help, or !commands");
-
-		} else {
-			if (!sender.equalsIgnoreCase("BanchoBot"))
-				m_client.sendMessage(sender, "This account is a bot. Command prefix is !. Send me !help for more info.");
-
-		}
 	}
 
 	public int getId(String name) {
@@ -1295,7 +1102,7 @@ public class IRCBot {
 						.setConnectTimeout(10000).setConnectionRequestTimeout(10000).build();
 				HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
 				URI uri = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/api/get_user")
-						.setParameter("k", configuration.apikey).setParameter("u", "" + name)
+						.setParameter("k", m_config.apikey).setParameter("u", "" + name)
 						.setParameter("type", "string").build();
 				HttpGet request = new HttpGet(uri);
 				HttpResponse response = httpClient.execute(request);
@@ -1321,7 +1128,7 @@ public class IRCBot {
 					.setConnectionRequestTimeout(10000).build();
 			HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
 			URI uri = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/api/get_user")
-					.setParameter("k", configuration.apikey).setParameter("u", "" + userId).setParameter("type", "id")
+					.setParameter("k", m_config.apikey).setParameter("u", "" + userId).setParameter("type", "id")
 					.build();
 			HttpGet request = new HttpGet(uri);
 			HttpResponse response = httpClient.execute(request);

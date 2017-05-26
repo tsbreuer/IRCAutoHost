@@ -22,7 +22,8 @@ public class AutoHost {
     public void ReconnectAutoHost() {
         try {
             this.irc.stopIRC();
-            this.irc = new IRCBot(this, config, irc.getLobbies(), irc.LobbyCreation, irc.DeadLobbies, irc.usernames);
+            this.irc = new IRCBot(this, config, irc.getLobbies(), irc.LobbyCreation,
+                    irc.getDeadLobbies(), irc.usernames);
         } catch (UnknownHostException e) {
             e.printStackTrace();
         } catch (IOException e) {
