@@ -1,7 +1,7 @@
 package autohost.utils;
 
 public class beatmapFile {
-	public lt.ekgame.beatmap_analyzer.Beatmap beatmap;
+	public lt.ekgame.beatmap_analyzer.beatmap.Beatmap beatmap;
 	public int id;
 	public double[] ppvalues;
 	public beatmapFile(int bid){

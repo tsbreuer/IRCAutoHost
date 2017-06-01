@@ -44,9 +44,10 @@ import autohost.utils.Request;
 import autohost.utils.Slot;
 import autohost.utils.TimerThread;
 import autohost.utils.beatmapFile;
-import lt.ekgame.beatmap_analyzer.calculator.Difficulty;
-import lt.ekgame.beatmap_analyzer.calculator.Performance;
-import lt.ekgame.beatmap_analyzer.calculator.PerformanceCalculator;
+import lt.ekgame.beatmap_analyzer.parser.*;
+import lt.ekgame.beatmap_analyzer.difficulty.*;
+import lt.ekgame.beatmap_analyzer.performance.*;
+import lt.ekgame.beatmap_analyzer.performance.scores.*;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapException;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapParser;
 import lt.ekgame.beatmap_analyzer.utils.Mod;
@@ -195,6 +196,8 @@ public class IRCClient {
 				}
 			}
 		}
+		
+		
 		Pattern channel = Pattern.compile(":(.+)!cho@ppy.sh PRIVMSG (.+) :(.+)");
 		Matcher channelmatch = channel.matcher(line);
 		if (channelmatch.find()) {
@@ -392,6 +395,12 @@ public class IRCClient {
 				lobby.currentBeatmapAuthor = bM.group(2);
 				lobby.currentBeatmapName = bM.group(3);
 			}
+			
+			Pattern invalidMap = Pattern.compile("Invalid map ID provided");
+			Matcher iMM = invalidMap.matcher(message);
+			if (bM.matches()) {
+				nextbeatmap(lobby);
+			}
 
 			// Is this one even worth adding?
 			Pattern players = Pattern.compile("Players: (\\d+)");
@@ -424,28 +433,28 @@ public class IRCClient {
 			// Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX [Hidden]
 			// Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX [HardRock]
 			// :Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX
-			Pattern slot = Pattern.compile("^Slot (\\d+)(\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\d+) (.+?)(?=( *$| +(\\[)([^\\[\\]]+)?(\\])?)$)");
+			Pattern slot = Pattern.compile(
+					"^Slot (\\d+)(\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\d+) (.+?)(?=( *$| +(\\[)([^\\[\\]]+)?(\\])?)$)");
 			Matcher sM = slot.matcher(message);
 			if (sM.matches()) {
-					int slotN = Integer.valueOf(sM.group(1));
-					if (lobby.slots.containsKey(slotN)) {
-						Slot slotM = lobby.slots.get(slotN);
-						slotM.status = sM.group(3);
-						slotM.id = slotN;
-						slotM.playerid = Integer.valueOf(sM.group(4));
-						slotM.name = sM.group(5);
-						lobby.slots.replace(slotN, slotM);
-					} else {
-						Slot slotM = new Slot();
-						slotM.status = sM.group(3);
-						slotM.id = slotN;
-						slotM.playerid = Integer.valueOf(sM.group(4));
-						slotM.name = sM.group(5);
-						lobby.slots.put(slotN, slotM);
-					}
-					return;
+				int slotN = Integer.valueOf(sM.group(1));
+				if (lobby.slots.containsKey(slotN)) {
+					Slot slotM = lobby.slots.get(slotN);
+					slotM.status = sM.group(3);
+					slotM.id = slotN;
+					slotM.playerid = Integer.valueOf(sM.group(4));
+					slotM.name = sM.group(5);
+					lobby.slots.replace(slotN, slotM);
+				} else {
+					Slot slotM = new Slot();
+					slotM.status = sM.group(3);
+					slotM.id = slotN;
+					slotM.playerid = Integer.valueOf(sM.group(4));
+					slotM.name = sM.group(5);
+					lobby.slots.put(slotN, slotM);
+				}
+				return;
 			}
-
 
 			Pattern join = Pattern.compile("(.+) joined in slot (\\d+).");
 			// :BanchoBot!cho@ppy.sh PRIVMSG #mp_29691447 :HyPeX joined in slot
@@ -574,7 +583,7 @@ public class IRCClient {
 			message = message.substring(1);
 			String[] args = message.split(" ");
 			if (args[0].equals("add")) {
-				if (lobby.lockAdding){
+				if (lobby.lockAdding) {
 					SendMessage(lobby.channel, Sender + " sorry, beatmap requesting is currently disabled.");
 					return;
 				}
@@ -701,7 +710,7 @@ public class IRCClient {
 				}
 
 			} else if (args[0].equalsIgnoreCase("adddt")) {
-				if (lobby.lockAdding){
+				if (lobby.lockAdding) {
 					SendMessage(lobby.channel, Sender + " sorry, beatmap requesting is currently disabled.");
 					return;
 				}
@@ -750,9 +759,12 @@ public class IRCClient {
 							HttpResponse response = httpClient.execute(request);
 							InputStream content = response.getEntity().getContent();
 							BeatmapParser parser = new BeatmapParser();
-							lt.ekgame.beatmap_analyzer.Beatmap cbp = parser.parse(content);
-							cbp = cbp.applyMods(new Mods(Mod.DOUBLE_TIME));
-							beatmap.difficulty = cbp.getDifficulty().getStarDifficulty();
+							lt.ekgame.beatmap_analyzer.beatmap.Beatmap cbp = parser.parse(content);
+							
+							Difficulty diff = cbp.getDifficulty(new Mods(Mod.DOUBLE_TIME));
+							Score ss = Score.of(cbp).build();
+							Performance perf = diff.getPerformance(ss);
+							beatmap.difficulty = diff.getStars();
 							beatmap.difficulty_ar = 4.66666 + 0.6666 * beatmap.difficulty_ar;
 							beatmap.difficulty_od = cbp.getDifficultySettings().getOD();
 							beatmap.difficulty_hp = cbp.getDifficultySettings().getHP();
@@ -967,9 +979,9 @@ public class IRCClient {
 					if (ID == (getId(Sender))) {
 						if (lobby.lockAdding) {
 							SendMessage(lobby.channel, "Map requests are now enabled.");
-							lobby.lockAdding=false;
+							lobby.lockAdding = false;
 						} else {
-							lobby.lockAdding=true;
+							lobby.lockAdding = true;
 							SendMessage(lobby.channel, "Map requests are now disabled.");
 						}
 						return;
@@ -1361,11 +1373,10 @@ public class IRCClient {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
-		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig)
-				.build();
+		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
 		URI uri = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/api/get_beatmaps")
 				.setParameter("k", configuration.apikey).setParameter("b", "" + beatmapId).setParameter("m", lobby.type)
-				
+
 				.build();
 		HttpGet request = new HttpGet(uri);
 		HttpResponse response = httpClient.execute(request);
@@ -1410,47 +1421,24 @@ public class IRCClient {
 
 		return score;
 	}
-/*
-	public void playerLeft(Lobby lobby) {
-		int ready = 0;
-		int players = 0;
-		for (int i = 0; i < 16; i++) {
-			if (lobby.slots.get(i) != null) {
-				if (lobby.slots.get(i).playerid != 0) {
-					Boolean voted = false;
-					for (String string : lobby.voteStart) {
-						if (string.equalsIgnoreCase(lobby.slots.get(i).name)) {
-							ready++;
-							voted = true;
-						}
-					}
-					if (!voted) {
-						if (lobby.slots.get(i).status.equalsIgnoreCase("Ready")) {
-							ready++;
-						}
-					}
-					players++;
-				}
-			}
-		}
-		if (players == 0) {
-			lobby.timer.resetTimer();
-			return;
-		}
 
-		if (ready >= round(players * 0.6, 0)) {
-			SendMessage(lobby.channel, ready + "/" + players + " have voted to start the game, starting.");
-			start(lobby);
-		}
-		if (ready < round(players * 0.6, 0)) {
-			SendMessage(lobby.channel, ready + "/" + (int) (round(players * 0.75, 0))
-					+ " votes to start the game. Please do !ready (or !r) if you're ready.");
-		}
-		if (players == 0) {
-			nextbeatmap(lobby);
-		}
-	}
-*/	
+	/*
+	 * public void playerLeft(Lobby lobby) { int ready = 0; int players = 0; for
+	 * (int i = 0; i < 16; i++) { if (lobby.slots.get(i) != null) { if
+	 * (lobby.slots.get(i).playerid != 0) { Boolean voted = false; for (String
+	 * string : lobby.voteStart) { if
+	 * (string.equalsIgnoreCase(lobby.slots.get(i).name)) { ready++; voted =
+	 * true; } } if (!voted) { if
+	 * (lobby.slots.get(i).status.equalsIgnoreCase("Ready")) { ready++; } }
+	 * players++; } } } if (players == 0) { lobby.timer.resetTimer(); return; }
+	 * 
+	 * if (ready >= round(players * 0.6, 0)) { SendMessage(lobby.channel, ready
+	 * + "/" + players + " have voted to start the game, starting.");
+	 * start(lobby); } if (ready < round(players * 0.6, 0)) {
+	 * SendMessage(lobby.channel, ready + "/" + (int) (round(players * 0.75, 0))
+	 * + " votes to start the game. Please do !ready (or !r) if you're ready.");
+	 * } if (players == 0) { nextbeatmap(lobby); } }
+	 */
 	public void tryStart(Lobby lobby) {
 		int ready = 0;
 		int players = 0;
@@ -1537,16 +1525,21 @@ public class IRCClient {
 					Mods modsFlag = Mods.parse(mods);
 					String modsString = modsFlag.toString();
 					foundMap = true;
-					lt.ekgame.beatmap_analyzer.Beatmap ppcalc = null;
-					ppcalc = lobby.beatmaps.get(lastBeatmap).applyMods(modsFlag);
-					Performance perf = ppcalc.getPerformance(ppcalc.getMaxCombo(), c100s, c50s, miss);
+					lt.ekgame.beatmap_analyzer.beatmap.Beatmap ppcalc = null;
+					/*Difficulty diff = cbp.getDifficulty(new Mods(Mod.DOUBLE_TIME));
+					Score ss = Score.of(cbp).build();
+					Performance perf = diff.getPerformance(ss);
+					*/
+					Difficulty diff = lobby.beatmaps.get(lastBeatmap).getDifficulty(modsFlag);
+					Score ScoreP = Score.of(ppcalc).combo(maxcombo).accuracy(acc,miss).build();
+					Performance perf = diff.getPerformance(ScoreP);
 					double pp = perf.getPerformance();
 					if (modsString.equalsIgnoreCase(""))
 						modsString = "NOMOD";
 					SendMessage(lobby.channel,
 							user + " || Rank: " + rank + " || Mods: " + modsString + " || Hits: " + c300s + "/" + c100s
-									+ "/" + c50s + "/" + miss + " || Combo: (" + maxcombo + "/"
-									+ ppcalc.getMaxCombo() + ") || " + String.format("%.02f", +acc * 100) + "% || PP: "
+									+ "/" + c50s + "/" + miss + " || Combo: (" + maxcombo + "/" + ppcalc.getMaxCombo()
+									+ ") || " + String.format("%.02f", +acc * 100) + "% || PP: "
 									+ String.format("%.02f", pp) + " ");
 
 				}
@@ -1563,6 +1556,10 @@ public class IRCClient {
 	public beatmapFile getPeppyPoints(int beatmapid, Lobby lobby) {
 		double[] str = new double[4];
 		beatmapFile bm = new beatmapFile(beatmapid);
+		if (lobby.type.equals("2")){
+		
+		return null;
+		}
 		try {
 			double ssNOMOD = 0;
 			double ssHIDDEN = 0;
@@ -1578,43 +1575,47 @@ public class IRCClient {
 			InputStream content = response.getEntity().getContent();
 			// String stringContent = IOUtils.toString(content, "UTF-8");
 			BeatmapParser parser = new BeatmapParser();
-			lt.ekgame.beatmap_analyzer.Beatmap cbp = parser.parse(content);
+			lt.ekgame.beatmap_analyzer.beatmap.Beatmap cbp = parser.parse(content);
+			if (cbp == null) {
+				SendMessage(lobby.channel, "Beatmap " + beatmapid + " is no longer available");
+			}
+			Score ss = Score.of(cbp).combo(cbp.getMaxCombo()).build();
 			lobby.beatmaps.put(beatmapid, cbp);
-			lt.ekgame.beatmap_analyzer.Beatmap cbp1 = null;
-			lt.ekgame.beatmap_analyzer.Beatmap cbp2 = null;
-			lt.ekgame.beatmap_analyzer.Beatmap cbp3 = null;
-			lt.ekgame.beatmap_analyzer.Beatmap cbp4 = null;
+			Difficulty cbp1 = null;
+			Difficulty cbp2 = null;
+			Difficulty cbp3 = null;
+			Difficulty cbp4 = null;
 			if (lobby.DoubleTime || lobby.NightCore) {
 				// Arrays.fill(currentBeatmap, cbp);
-				cbp1 = cbp.applyMods(new Mods(Mod.DOUBLE_TIME));
-				cbp2 = cbp.applyMods(new Mods(Mod.HIDDEN, Mod.DOUBLE_TIME));
-				cbp3 = cbp.applyMods(new Mods(Mod.HARDROCK, Mod.DOUBLE_TIME));
-				cbp4 = cbp.applyMods(new Mods(Mod.HIDDEN, Mod.HARDROCK, Mod.DOUBLE_TIME));
+				cbp1 = cbp.getDifficulty(new Mods(Mod.DOUBLE_TIME));
+				cbp2 = cbp.getDifficulty(new Mods(Mod.HIDDEN, Mod.DOUBLE_TIME));
+				cbp3 = cbp.getDifficulty(new Mods(Mod.HARDROCK, Mod.DOUBLE_TIME));
+				cbp4 = cbp.getDifficulty(new Mods(Mod.HIDDEN, Mod.HARDROCK, Mod.DOUBLE_TIME));
 			}
 
 			if (lobby.HalfTime) {
 				// Arrays.fill(currentBeatmap, cbp);
-				cbp1 = cbp.applyMods(new Mods(Mod.HALF_TIME));
-				cbp2 = cbp.applyMods(new Mods(Mod.HIDDEN, Mod.HALF_TIME));
-				cbp3 = cbp.applyMods(new Mods(Mod.HARDROCK, Mod.HALF_TIME));
-				cbp4 = cbp.applyMods(new Mods(Mod.HIDDEN, Mod.HARDROCK, Mod.HALF_TIME));
+				cbp1 = cbp.getDifficulty(new Mods(Mod.HALF_TIME));
+				cbp2 = cbp.getDifficulty(new Mods(Mod.HIDDEN, Mod.HALF_TIME));
+				cbp3 = cbp.getDifficulty(new Mods(Mod.HARDROCK, Mod.HALF_TIME));
+				cbp4 = cbp.getDifficulty(new Mods(Mod.HIDDEN, Mod.HARDROCK, Mod.HALF_TIME));
 			}
 
 			if (!lobby.HalfTime && !(lobby.DoubleTime || lobby.NightCore)) {
 				// Arrays.fill(currentBeatmap, cbp);
-				cbp1 = cbp.applyMods(new Mods());
-				cbp2 = cbp.applyMods(new Mods(Mod.HIDDEN));
-				cbp3 = cbp.applyMods(new Mods(Mod.HARDROCK));
-				cbp4 = cbp.applyMods(new Mods(Mod.HIDDEN, Mod.HARDROCK));
+				cbp1 = cbp.getDifficulty(new Mods());
+				cbp2 = cbp.getDifficulty(new Mods(Mod.HIDDEN));
+				cbp3 = cbp.getDifficulty(new Mods(Mod.HARDROCK));
+				cbp4 = cbp.getDifficulty(new Mods(Mod.HIDDEN, Mod.HARDROCK));
 			}
-			Performance perf = cbp1.getPerformance(cbp.getMaxCombo(), 0, 0, 0);
+			Performance perf = cbp1.getPerformance(ss);
 			ssNOMOD = perf.getPerformance();
 
-			Performance perf2 = cbp2.getPerformance(cbp2.getMaxCombo(), 0, 0, 0);
+			Performance perf2 = cbp2.getPerformance(ss);
 			ssHIDDEN = perf2.getPerformance();
-			Performance perf3 = cbp3.getPerformance(cbp3.getMaxCombo(), 0, 0, 0);
+			Performance perf3 = cbp3.getPerformance(ss);
 			ssHR = perf3.getPerformance();
-			Performance perf4 = cbp4.getPerformance(cbp4.getMaxCombo(), 0, 0, 0);
+			Performance perf4 = cbp4.getPerformance(ss);
 			ssHDHR = perf4.getPerformance();
 			str[0] = ssNOMOD;
 			str[1] = ssHIDDEN;
@@ -1645,12 +1646,16 @@ public class IRCClient {
 					return;
 				}
 				Beatmap beatmap = new Beatmap(obj, true);
-				beatmapFile bm = getPeppyPoints(beatmap.beatmap_id,lobby);
-				if (bm == null){
+				
+				beatmapFile bm = getPeppyPoints(beatmap.beatmap_id, lobby);
+				if (bm == null) {
+					if (!lobby.type.equals("2")){
+						
 					SendMessage(lobby.channel, "An error ocurred while loading the random beatmap.");
 					SendMessage(lobby.channel, "Maybe it doesnt exist anymore? Retrying");
 					nextbeatmap(lobby);
 					return;
+					}
 				}
 				if (lobby.onlyDifficulty) { // Does the lobby have
 											// locked difficulty limits?
@@ -1705,11 +1710,6 @@ public class IRCClient {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
-		Random rand = new Random();
-		double num = rand.nextDouble();
-		double number = lobby.minDifficulty + (num * (lobby.maxDifficulty - lobby.minDifficulty));
-		double mindiff = number - 0.01;
-		double maxdiff = number + 0.01;
 		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
 		// http://osusearch.com/search/?genres=Anime
 		// &languages=Japanese&statuses=Ranked
@@ -1746,20 +1746,28 @@ public class IRCClient {
 		}
 		URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/random/")
 				.setParameter("statuses", status).setParameter("modes", mode).setParameter("order", "-difficulty")
-				.setParameter("max_length", "300").setParameter("star", "( " + mindiff + "," + maxdiff + ")")
-				.setParameter("date_start", date_start).setParameter("date_end", date_end)
-				.setParameter("ammount", "5")
+				.setParameter("max_length", "300")
+				.setParameter("star", "( " + lobby.minDifficulty + "," + lobby.maxDifficulty + ")")
+				.setParameter("date_start", date_start).setParameter("date_end", date_end).setParameter("ammount", "5")
 				.setParameter("ar", "( 0," + maxAR + ")").build();
 		HttpGet request = new HttpGet(uri);
 		request.setHeader("Accept", "json");
-		
+		System.out.println(uri.toString());
 		HttpResponse response = httpClient.execute(request);
 		InputStream content = response.getEntity().getContent();
 		String stringContent = IOUtils.toString(content, "UTF-8");
 		JSONObject obj = new JSONObject(stringContent);
 		JSONArray array = obj.getJSONArray("beatmaps");
 		Random randomNumber = new Random();
-		int pick = randomNumber.nextInt(array.length());
+		int pick;
+		if (array.length() > 1) {
+			pick = randomNumber.nextInt(array.length());
+		} else if (array.length() == 1) {
+			pick = 1;
+		} else {
+			SendMessage(lobby.channel, "Random returned 0 results. Fucked up?");
+			pick = 1;
+		}
 		callback.accept(array.length() > 0 ? (JSONObject) array.get(pick) : null);
 	}
 
@@ -1875,9 +1883,14 @@ public class IRCClient {
 
 		beatmapFile pplife = getPeppyPoints(next.beatmap_id, lobby);
 		if (pplife == null) {
+			if (!lobby.type.equals("2")){
 			SendMessage(lobby.channel, "Beatmap was unable to be analyzed. Does it exist? Skipping");
 			nextbeatmap(lobby);
 			return;
+			}
+			else{
+				SendMessage(lobby.channel, "CTB analyzer currently doesnt work. Sorry bout that.");
+			}
 		}
 		if (lobby.DoubleTime)
 			md = md + "DT";
@@ -1885,6 +1898,7 @@ public class IRCClient {
 			md = md + "NC";
 		if (lobby.HalfTime)
 			md = md + "HT";
+		if (pplife != null)
 		if (pplife.ppvalues[0] != 0) {
 			SendMessage(lobby.channel,
 					md + "SS: " + String.format("%.02f", pplife.ppvalues[0]) + "pp || " + md + "HD: "
@@ -1959,6 +1973,7 @@ public class IRCClient {
 			md = md + "NC";
 		if (lobby.HalfTime)
 			md = md + "HT";
+		if (pplife != null)
 		if (pplife.ppvalues[0] != 0) {
 			SendMessage(lobby.channel,
 					md + "SS: " + String.format("%.02f", pplife.ppvalues[0]) + "pp || " + md + "HD: "
