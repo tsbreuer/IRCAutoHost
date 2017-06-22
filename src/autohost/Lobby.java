@@ -20,7 +20,7 @@ public class Lobby {
 	public List<String> voteskip  = new LinkedList<>();
 	
 	public TimerThread timer;
-	public String name;
+	public String name = "";
 	public Boolean OPLobby = false;
 	public String creatorName;
 	
@@ -84,7 +84,7 @@ public class Lobby {
 	public Boolean WIP = false;
 	public Boolean graveyard = false;
 	
-	public Boolean onlyType = true; // Lock lobby to type
+	public Boolean onlyType = true; // Lock lobby to ty pe
 	public String type; // 0 = osu!, 1 = Taiko, 2 = CtB, 3 = osu!mania
 
 	

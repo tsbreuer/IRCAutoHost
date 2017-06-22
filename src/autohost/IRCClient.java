@@ -196,8 +196,7 @@ public class IRCClient {
 				}
 			}
 		}
-		
-		
+
 		Pattern channel = Pattern.compile(":(.+)!cho@ppy.sh PRIVMSG (.+) :(.+)");
 		Matcher channelmatch = channel.matcher(line);
 		if (channelmatch.find()) {
@@ -395,10 +394,10 @@ public class IRCClient {
 				lobby.currentBeatmapAuthor = bM.group(2);
 				lobby.currentBeatmapName = bM.group(3);
 			}
-			
+
 			Pattern invalidMap = Pattern.compile("Invalid map ID provided");
 			Matcher iMM = invalidMap.matcher(message);
-			if (bM.matches()) {
+			if (iMM.matches()) {
 				nextbeatmap(lobby);
 			}
 
@@ -760,7 +759,7 @@ public class IRCClient {
 							InputStream content = response.getEntity().getContent();
 							BeatmapParser parser = new BeatmapParser();
 							lt.ekgame.beatmap_analyzer.beatmap.Beatmap cbp = parser.parse(content);
-							
+
 							Difficulty diff = cbp.getDifficulty(new Mods(Mod.DOUBLE_TIME));
 							Score ss = Score.of(cbp).build();
 							Performance perf = diff.getPerformance(ss);
@@ -1233,16 +1232,15 @@ public class IRCClient {
 	}
 
 	public void addAFK(Lobby lobby, String player) {
-		if (lobby.afk.containsKey(player)) {
-			lobby.afk.put(player, lobby.afk.get(player) + 1);
-			if (lobby.afk.get(player) >= 3) {
-				SendMessage(lobby.channel, "!mp kick " + player);
-				SendMessage(lobby.channel, player + " was kicked for being AFK for 5 rounds.");
-				SendMessage(player, "You were kicked from the lobby for being AFK.");
-			}
-		} else {
-			lobby.afk.put(player, 1);
-		}
+		/*
+		 * we dun want this if (lobby.afk.containsKey(player)) {
+		 * lobby.afk.put(player, lobby.afk.get(player) + 1); if
+		 * (lobby.afk.get(player) >= 3) { SendMessage(lobby.channel, "!mp kick "
+		 * + player); SendMessage(lobby.channel, player +
+		 * " was kicked for being AFK for 5 rounds."); SendMessage(player,
+		 * "You were kicked from the lobby for being AFK."); } } else {
+		 * lobby.afk.put(player, 1); }
+		 */
 	}
 
 	public void removeAFK(Lobby lobby, String player) {
@@ -1526,12 +1524,33 @@ public class IRCClient {
 					String modsString = modsFlag.toString();
 					foundMap = true;
 					lt.ekgame.beatmap_analyzer.beatmap.Beatmap ppcalc = null;
-					/*Difficulty diff = cbp.getDifficulty(new Mods(Mod.DOUBLE_TIME));
-					Score ss = Score.of(cbp).build();
-					Performance perf = diff.getPerformance(ss);
-					*/
-					Difficulty diff = lobby.beatmaps.get(lastBeatmap).getDifficulty(modsFlag);
-					Score ScoreP = Score.of(ppcalc).combo(maxcombo).accuracy(acc,miss).build();
+					try {
+						RequestConfig Requestconfig = RequestConfig.custom().setSocketTimeout(10000)
+								.setConnectTimeout(10000).setConnectionRequestTimeout(10000).build();
+
+						HttpClient httpC = HttpClients.custom().setDefaultRequestConfig(Requestconfig).build();
+						URI uriB = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/osu/" + id)
+								.build();
+						HttpGet requestGet = new HttpGet(uriB);
+						HttpResponse resp = httpC.execute(requestGet);
+						InputStream input = resp.getEntity().getContent();
+						// String stringContent = IOUtils.toString(content,
+						// "UTF-8");
+						BeatmapParser parser = new BeatmapParser();
+						ppcalc = parser.parse(input);
+						if (ppcalc == null) {
+							SendMessage(lobby.channel, "Beatmap " + id + " is no longer available");
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}	
+					/*
+					 * Difficulty diff = cbp.getDifficulty(new
+					 * Mods(Mod.DOUBLE_TIME)); Score ss = Score.of(cbp).build();
+					 * Performance perf = diff.getPerformance(ss);
+					 */
+					Difficulty diff = ppcalc.getDifficulty(modsFlag);
+					Score ScoreP = Score.of(ppcalc).combo(maxcombo).accuracy(acc, miss).build();
 					Performance perf = diff.getPerformance(ScoreP);
 					double pp = perf.getPerformance();
 					if (modsString.equalsIgnoreCase(""))
@@ -1548,7 +1567,9 @@ public class IRCClient {
 			if (!foundMap) {
 				SendMessage(lobby.channel, user + " You didnt play (or pass) last beatmap!");
 			}
-		} catch (URISyntaxException | IOException e) {
+		} catch (URISyntaxException |
+
+				IOException e) {
 			e.printStackTrace();
 		}
 	}
@@ -1556,9 +1577,9 @@ public class IRCClient {
 	public beatmapFile getPeppyPoints(int beatmapid, Lobby lobby) {
 		double[] str = new double[4];
 		beatmapFile bm = new beatmapFile(beatmapid);
-		if (lobby.type.equals("2")){
-		
-		return null;
+		if (lobby.type.equals("2")) {
+
+			return null;
 		}
 		try {
 			double ssNOMOD = 0;
@@ -1646,15 +1667,15 @@ public class IRCClient {
 					return;
 				}
 				Beatmap beatmap = new Beatmap(obj, true);
-				
+
 				beatmapFile bm = getPeppyPoints(beatmap.beatmap_id, lobby);
 				if (bm == null) {
-					if (!lobby.type.equals("2")){
-						
-					SendMessage(lobby.channel, "An error ocurred while loading the random beatmap.");
-					SendMessage(lobby.channel, "Maybe it doesnt exist anymore? Retrying");
-					nextbeatmap(lobby);
-					return;
+					if (!lobby.type.equals("2")) {
+
+						SendMessage(lobby.channel, "An error ocurred while loading the random beatmap.");
+						SendMessage(lobby.channel, "Maybe it doesnt exist anymore? Retrying");
+						nextbeatmap(lobby);
+						return;
 					}
 				}
 				if (lobby.onlyDifficulty) { // Does the lobby have
@@ -1883,12 +1904,11 @@ public class IRCClient {
 
 		beatmapFile pplife = getPeppyPoints(next.beatmap_id, lobby);
 		if (pplife == null) {
-			if (!lobby.type.equals("2")){
-			SendMessage(lobby.channel, "Beatmap was unable to be analyzed. Does it exist? Skipping");
-			nextbeatmap(lobby);
-			return;
-			}
-			else{
+			if (!lobby.type.equals("2")) {
+				SendMessage(lobby.channel, "Beatmap was unable to be analyzed. Does it exist? Skipping");
+				nextbeatmap(lobby);
+				return;
+			} else {
 				SendMessage(lobby.channel, "CTB analyzer currently doesnt work. Sorry bout that.");
 			}
 		}
@@ -1899,13 +1919,13 @@ public class IRCClient {
 		if (lobby.HalfTime)
 			md = md + "HT";
 		if (pplife != null)
-		if (pplife.ppvalues[0] != 0) {
-			SendMessage(lobby.channel,
-					md + "SS: " + String.format("%.02f", pplife.ppvalues[0]) + "pp || " + md + "HD: "
-							+ String.format("%.02f", pplife.ppvalues[1]) + "pp || " + md + "HR: "
-							+ String.format("%.02f", pplife.ppvalues[2]) + "pp || " + md + "HDHR: "
-							+ String.format("%.02f", pplife.ppvalues[3]) + "pp");
-		}
+			if (pplife.ppvalues[0] != 0) {
+				SendMessage(lobby.channel,
+						md + "SS: " + String.format("%.02f", pplife.ppvalues[0]) + "pp || " + md + "HD: "
+								+ String.format("%.02f", pplife.ppvalues[1]) + "pp || " + md + "HR: "
+								+ String.format("%.02f", pplife.ppvalues[2]) + "pp || " + md + "HDHR: "
+								+ String.format("%.02f", pplife.ppvalues[3]) + "pp");
+			}
 		lobby.beatmapPlayed.add(next);
 	}
 
@@ -1974,13 +1994,13 @@ public class IRCClient {
 		if (lobby.HalfTime)
 			md = md + "HT";
 		if (pplife != null)
-		if (pplife.ppvalues[0] != 0) {
-			SendMessage(lobby.channel,
-					md + "SS: " + String.format("%.02f", pplife.ppvalues[0]) + "pp || " + md + "HD: "
-							+ String.format("%.02f", pplife.ppvalues[1]) + "pp || " + md + "HR: "
-							+ String.format("%.02f", pplife.ppvalues[2]) + "pp || " + md + "HDHR: "
-							+ String.format("%.02f", pplife.ppvalues[3]) + "pp");
-		}
+			if (pplife.ppvalues[0] != 0) {
+				SendMessage(lobby.channel,
+						md + "SS: " + String.format("%.02f", pplife.ppvalues[0]) + "pp || " + md + "HD: "
+								+ String.format("%.02f", pplife.ppvalues[1]) + "pp || " + md + "HR: "
+								+ String.format("%.02f", pplife.ppvalues[2]) + "pp || " + md + "HDHR: "
+								+ String.format("%.02f", pplife.ppvalues[3]) + "pp");
+			}
 		lobby.beatmapPlayed.add(next);
 	}
 
@@ -2046,13 +2066,19 @@ public class IRCClient {
 					}
 				}
 			} else if (args[0].equalsIgnoreCase("recreate")) {
-				for (Lobby lobby : DeadLobbies) {
-					if (lobby.creatorName.equalsIgnoreCase(sender)) {
-						DeadLobbies.remove(lobby);
-						createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName,
-								lobby.OPLobby);
-						SendMessage(sender, "Lobby is being created. Please wait...");
-						return;
+				Iterator<Lobby> iter = DeadLobbies.iterator();
+				while (iter.hasNext()) {
+					Lobby lobby = iter.next();
+					if (lobby.creatorName != null || lobby.creatorName.equals("")) {
+						if (lobby.creatorName.equalsIgnoreCase(sender)) {
+							iter.remove();
+							createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName,
+									lobby.OPLobby);
+							SendMessage(sender, "Lobby is being created. Please wait...");
+							return;
+						}
+					} else {
+						iter.remove();
 					}
 				}
 			} else if (args[0].equalsIgnoreCase("droplobby")) {
