@@ -136,6 +136,14 @@ public class Lobby {
 		}
 		return didvote;
 	}
+	public Boolean isOP(int user) {
+		for (int ID : this.OPs) {
+			if (ID == (user)) {
+				return true;
+			}
+		}
+		return false;
+	}
 	public Boolean votedskip(String user){
 		Boolean didvote = false;
 		for (String player : voteskip){
