@@ -4,9 +4,11 @@ import autohost.handler.ChannelMessageHandler;
 import autohost.handler.PrivateMessageHandler;
 import autohost.irc.IRCClient;
 import autohost.util.*;
-import lt.ekgame.beatmap_analyzer.calculator.Performance;
+import lt.ekgame.beatmap_analyzer.difficulty.Difficulty;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapException;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapParser;
+import lt.ekgame.beatmap_analyzer.performance.Performance;
+import lt.ekgame.beatmap_analyzer.performance.scores.Score;
 import lt.ekgame.beatmap_analyzer.utils.Mod;
 import lt.ekgame.beatmap_analyzer.utils.Mods;
 import org.apache.commons.io.IOUtils;
@@ -123,45 +125,47 @@ public class IRCBot {
         listen();
     }
 
-    private void listen() throws IOException {
-        BufferedReader reader = new BufferedReader(
-                new InputStreamReader(m_client.getInputStream()));
+	private void listen() throws IOException {
+		BufferedReader reader = new BufferedReader(
+				new InputStreamReader(m_client.getInputStream()));
 
-        String msg = "";
-        while ((msg = reader.readLine()) != null && !m_shouldStop) {
-            if (msg.contains("001")) {
-                if (!msg.contains("cho@ppy.sh QUIT")) {
-                    System.out.println("Logged in");
-                    System.out.println("Line: " + msg);
-                }
-            }
-            if (msg.contains("PING")) {
-                if (!msg.contains("cho@ppy.sh QUIT")) {
-                    String pingRequest = msg.substring(msg.indexOf("PING") + 5);
-                    m_client.write("PONG " + pingRequest);
-                    LastConnection = System.currentTimeMillis();
-                }
-            } else if (msg.contains("PONG")) {
-                if (!msg.contains("cho@ppy.sh QUIT")) {
-                    LastConnection = System.currentTimeMillis();
-                }
-            }
-            log(msg);
-            if ((System.currentTimeMillis() - LastConnection) > (70 * SECOND)) {
-                if (System.currentTimeMillis()- LastRequested > (5 * SECOND)){
-                    getClient().write("PING " + System.currentTimeMillis());
-                    LastMessagePING = ""+System.currentTimeMillis();
-                    LastRequested = System.currentTimeMillis();
-                    System.out.println((System.currentTimeMillis() - LastConnection));
-                }
-                if ((System.currentTimeMillis()-LastConnection) > (100 * SECOND)){
-                    autohost.ReconnectAutoHost();
-                    System.out.println("Connection to bancho Lost. Reconnecting...");
-                }
-            }
-        }
-        reader.close();
-    }
+		String msg = "";
+		while ((msg = reader.readLine()) != null && !m_shouldStop) {
+			if (msg.contains("001")) {
+				if (!msg.contains("cho@ppy.sh QUIT")) {
+					System.out.println("Logged in");
+					System.out.println("Line: " + msg);
+				}
+			}
+			if (msg.contains("PING")) {
+				if (!msg.contains("cho@ppy.sh QUIT")) {
+					if (msg.length() > msg.indexOf("PING") + 5) {
+						String pingRequest = msg.substring(msg.indexOf("PING") + 5);
+						m_client.write("PONG " + pingRequest);
+						LastConnection = System.currentTimeMillis();
+					}
+				}
+			} else if (msg.contains("PONG")) {
+				if (!msg.contains("cho@ppy.sh QUIT")) {
+					LastConnection = System.currentTimeMillis();
+				}
+			}
+			log(msg);
+			if ((System.currentTimeMillis() - LastConnection) > (70 * SECOND)) {
+				if (System.currentTimeMillis()- LastRequested > (5 * SECOND)) {
+					getClient().write("PING " + System.currentTimeMillis());
+					LastMessagePING = "" + System.currentTimeMillis();
+					LastRequested = System.currentTimeMillis();
+					System.out.println((System.currentTimeMillis() - LastConnection));
+				}
+				if ((System.currentTimeMillis() - LastConnection) > (100 * SECOND)) {
+					autohost.ReconnectAutoHost();
+					System.out.println("Connection to bancho Lost. Reconnecting...");
+				}
+			}
+		}
+		reader.close();
+	}
 
 	public void stopIRC() {
 		try {
@@ -303,7 +307,7 @@ public class IRCBot {
 				}
 			}
 			if (!inside)
-				m_client.sendMessage(lobbyChannel, "!mp move " + lobby.creatorName);
+				m_client.sendMessage(lobbyChannel, "!mp add " + lobby.creatorName);
 			lobby.timer = new TimerThread(this, lobby);
 			lobby.timer.start();
 
@@ -331,6 +335,8 @@ public class IRCBot {
 	}
 
 	public void addAFK(Lobby lobby, String player) {
+		// We don't want this
+		/*
 		if (lobby.afk.containsKey(player)) {
 			lobby.afk.put(player, lobby.afk.get(player) + 1);
 			if (lobby.afk.get(player) >= 3) {
@@ -341,6 +347,7 @@ public class IRCBot {
 		} else {
 			lobby.afk.put(player, 1);
 		}
+		*/
 	}
 
 	public void removeAFK(Lobby lobby, String player) {
@@ -471,8 +478,7 @@ public class IRCBot {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
-        HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig)
-                .build();
+        HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
 		URI uri = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/api/get_beatmaps")
 				.setParameter("k", m_config.apikey).setParameter("b", "" + beatmapId).setParameter("m", lobby.type)
 				.build();
@@ -643,9 +649,30 @@ public class IRCBot {
 					Mods modsFlag = Mods.parse(mods);
 					String modsString = modsFlag.toString();
 					foundMap = true;
-					lt.ekgame.beatmap_analyzer.Beatmap ppcalc = null;
-					ppcalc = lobby.beatmaps.get(lastBeatmap).applyMods(modsFlag);
-					Performance perf = ppcalc.getPerformance(ppcalc.getMaxCombo(), c100s, c50s, miss);
+					lt.ekgame.beatmap_analyzer.beatmap.Beatmap ppcalc = null;
+					try {
+						RequestConfig Requestconfig = RequestConfig.custom()
+								.setSocketTimeout(10 * (int)SECOND)
+								.setConnectTimeout(10 * (int)SECOND)
+								.setConnectionRequestTimeout(10 * (int)SECOND)
+								.build();
+						HttpClient httpC = HttpClients.custom().setDefaultRequestConfig(Requestconfig).build();
+						URI uriB = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/osu/" + id)
+								.build();
+						HttpGet requestGet = new HttpGet(uriB);
+						HttpResponse resp = httpC.execute(requestGet);
+						InputStream input = resp.getEntity().getContent();
+						BeatmapParser parser = new BeatmapParser();
+						ppcalc = parser.parse(input);
+						if (ppcalc == null) {
+							m_client.sendMessage(lobby.channel, "Beatmap " + id + " is no longer available.");
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					Difficulty diff = ppcalc.getDifficulty(modsFlag);
+					Score ScoreP = Score.of(ppcalc).combo(maxcombo).accuracy(acc, miss).build();
+					Performance perf = diff.getPerformance(ScoreP);
 					double pp = perf.getPerformance();
 					if (modsString.equalsIgnoreCase(""))
 						modsString = "NOMOD";
@@ -669,6 +696,8 @@ public class IRCBot {
 	}
 
 	public beatmapFile getPeppyPoints(int beatmapid, Lobby lobby) {
+        if (lobby.type.equals("2")) return null;
+
 		double[] str = new double[4];
 		beatmapFile bm = new beatmapFile(beatmapid);
 		try {
@@ -686,43 +715,48 @@ public class IRCBot {
 			InputStream content = response.getEntity().getContent();
 			// String stringContent = IOUtils.toString(content, "UTF-8");
 			BeatmapParser parser = new BeatmapParser();
-			lt.ekgame.beatmap_analyzer.Beatmap cbp = parser.parse(content);
+			lt.ekgame.beatmap_analyzer.beatmap.Beatmap cbp = parser.parse(content);
+			if (cbp == null) {
+			    m_client.sendMessage(lobby.channel, "Beatmap " + beatmapid
+						+ " is no longer available.");
+			}
+			Score ss = Score.of(cbp).combo(cbp.getMaxCombo()).build();
 			lobby.beatmaps.put(beatmapid, cbp);
-			lt.ekgame.beatmap_analyzer.Beatmap cbp1 = null;
-			lt.ekgame.beatmap_analyzer.Beatmap cbp2 = null;
-			lt.ekgame.beatmap_analyzer.Beatmap cbp3 = null;
-			lt.ekgame.beatmap_analyzer.Beatmap cbp4 = null;
+			Difficulty cbp1 = null;
+			Difficulty cbp2 = null;
+			Difficulty cbp3 = null;
+			Difficulty cbp4 = null;
 			if (lobby.DoubleTime || lobby.NightCore) {
 				// Arrays.fill(currentBeatmap, cbp);
-				cbp1 = cbp.applyMods(new Mods(Mod.DOUBLE_TIME));
-				cbp2 = cbp.applyMods(new Mods(Mod.HIDDEN, Mod.DOUBLE_TIME));
-				cbp3 = cbp.applyMods(new Mods(Mod.HARDROCK, Mod.DOUBLE_TIME));
-				cbp4 = cbp.applyMods(new Mods(Mod.HIDDEN, Mod.HARDROCK, Mod.DOUBLE_TIME));
+				cbp1 = cbp.getDifficulty(new Mods(Mod.DOUBLE_TIME));
+				cbp2 = cbp.getDifficulty(new Mods(Mod.HIDDEN, Mod.DOUBLE_TIME));
+				cbp3 = cbp.getDifficulty(new Mods(Mod.HARDROCK, Mod.DOUBLE_TIME));
+				cbp4 = cbp.getDifficulty(new Mods(Mod.HIDDEN, Mod.HARDROCK, Mod.DOUBLE_TIME));
 			}
 
 			if (lobby.HalfTime) {
 				// Arrays.fill(currentBeatmap, cbp);
-				cbp1 = cbp.applyMods(new Mods(Mod.HALF_TIME));
-				cbp2 = cbp.applyMods(new Mods(Mod.HIDDEN, Mod.HALF_TIME));
-				cbp3 = cbp.applyMods(new Mods(Mod.HARDROCK, Mod.HALF_TIME));
-				cbp4 = cbp.applyMods(new Mods(Mod.HIDDEN, Mod.HARDROCK, Mod.HALF_TIME));
+				cbp1 = cbp.getDifficulty(new Mods(Mod.HALF_TIME));
+				cbp2 = cbp.getDifficulty(new Mods(Mod.HIDDEN, Mod.HALF_TIME));
+				cbp3 = cbp.getDifficulty(new Mods(Mod.HARDROCK, Mod.HALF_TIME));
+				cbp4 = cbp.getDifficulty(new Mods(Mod.HIDDEN, Mod.HARDROCK, Mod.HALF_TIME));
 			}
 
 			if (!lobby.HalfTime && !(lobby.DoubleTime || lobby.NightCore)) {
 				// Arrays.fill(currentBeatmap, cbp);
-				cbp1 = cbp.applyMods(new Mods());
-				cbp2 = cbp.applyMods(new Mods(Mod.HIDDEN));
-				cbp3 = cbp.applyMods(new Mods(Mod.HARDROCK));
-				cbp4 = cbp.applyMods(new Mods(Mod.HIDDEN, Mod.HARDROCK));
+				cbp1 = cbp.getDifficulty(new Mods());
+				cbp2 = cbp.getDifficulty(new Mods(Mod.HIDDEN));
+				cbp3 = cbp.getDifficulty(new Mods(Mod.HARDROCK));
+				cbp4 = cbp.getDifficulty(new Mods(Mod.HIDDEN, Mod.HARDROCK));
 			}
-			Performance perf = cbp1.getPerformance(cbp.getMaxCombo(), 0, 0, 0);
+			Performance perf = cbp1.getPerformance(ss);
 			ssNOMOD = perf.getPerformance();
 
-			Performance perf2 = cbp2.getPerformance(cbp2.getMaxCombo(), 0, 0, 0);
+			Performance perf2 = cbp2.getPerformance(ss);
 			ssHIDDEN = perf2.getPerformance();
-			Performance perf3 = cbp3.getPerformance(cbp3.getMaxCombo(), 0, 0, 0);
+			Performance perf3 = cbp3.getPerformance(ss);
 			ssHR = perf3.getPerformance();
-			Performance perf4 = cbp4.getPerformance(cbp4.getMaxCombo(), 0, 0, 0);
+			Performance perf4 = cbp4.getPerformance(ss);
 			ssHDHR = perf4.getPerformance();
 			str[0] = ssNOMOD;
 			str[1] = ssHIDDEN;
@@ -756,13 +790,15 @@ public class IRCBot {
 				Beatmap beatmap = JSONUtils.silentGetBeatmap(obj, true);
 				beatmapFile bm = getPeppyPoints(beatmap.beatmap_id, lobby);
 				if (bm == null) {
-				    m_client.sendMessage(lobby.channel,
-                            "An error ocurred while loading the random beatmap.");
-                    m_client.sendMessage(lobby.channel,
-                            "Maybe it doesnt exist anymore? Retrying");
-                    nextbeatmap(lobby);
-                    return;
-                }
+					if (!lobby.type.equals("2")) {
+						m_client.sendMessage(lobby.channel,
+								"An error ocurred while loading the random beatmap.");
+						m_client.sendMessage(lobby.channel,
+								"Maybe it doesnt exist anymore? Retrying");
+						nextbeatmap(lobby);
+						return;
+					}
+				}
 				if (lobby.onlyDifficulty) { // Does the lobby have
 											// locked difficulty limits?
 					if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) { // Are
@@ -816,11 +852,6 @@ public class IRCBot {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
-		Random rand = new Random();
-		double num = rand.nextDouble();
-		double number = lobby.minDifficulty + (num * (lobby.maxDifficulty - lobby.minDifficulty));
-		double mindiff = number - 0.01;
-		double maxdiff = number + 0.01;
 		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
 		// http://osusearch.com/search/?genres=Anime
 		// &languages=Japanese&statuses=Ranked
@@ -857,38 +888,72 @@ public class IRCBot {
 		}
 		URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/random/")
 				.setParameter("statuses", status).setParameter("modes", mode).setParameter("order", "-difficulty")
-				.setParameter("max_length", "300").setParameter("star", "( " + mindiff + "," + maxdiff + ")")
+				.setParameter("max_length", "300")
+				.setParameter("star", "( " + lobby.minDifficulty + "," + lobby.maxDifficulty + ")")
 				.setParameter("date_start", date_start).setParameter("date_end", date_end)
                 .setParameter("ammount", "5")
 				.setParameter("ar", "( 0," + maxAR + ")").build();
 		HttpGet request = new HttpGet(uri);
 		request.setHeader("Accept", "json");
-
+		System.out.println(uri.toString());
 		HttpResponse response = httpClient.execute(request);
 		InputStream content = response.getEntity().getContent();
 		String stringContent = IOUtils.toString(content, "UTF-8");
 		JSONObject obj = new JSONObject(stringContent);
 		JSONArray array = obj.getJSONArray("beatmaps");
 		Random randomNumber = new Random();
-		int pick = randomNumber.nextInt(array.length());
+		int pick;
+		if (array.length() > 1) {
+			pick = randomNumber.nextInt(array.length());
+		} else if (array.length() == 1) {
+			pick = 1;
+		} else {
+			m_client.sendMessage(lobby.channel, "Random returned 0 results. Fucked up?");
+			pick = 1;
+		}
 		callback.accept(array.length() > 0 ? (JSONObject) array.get(pick) : null);
 	}
 
-	public String searchBeatmap(String name, Lobby lobby, String sender) {
+	public String searchBeatmap(String name, Lobby lobby, String sender, String author) {
 		try {
 			RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 					.setConnectionRequestTimeout(10000).build();
 			HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
-			String ranked = "Ranked";
-			String modes = lobby.type;
-			if (lobby.status == 1) {
-
+			String status = "Ranked";
+			if (!lobby.statusTypes.get(-2)) {
+				status = "Ranked";
+			} else {
+				status = "Ranked,Qualified,Unranked";
 			}
-
-			URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/query/")
-					.setParameter("title", name).setParameter("statuses", "Ranked").setParameter("modes", modes)
-					.setParameter("order", "play_count")
-					.setParameter("star", "( " + lobby.minDifficulty + "," + lobby.maxDifficulty + ")").build();
+			String mode = "Standard";
+			String maxAR = "12";
+			// 0 = osu!, 1 = Taiko, 2 = CtB, 3 = osu!mania
+			if (lobby.type.equals("1")) {
+				mode = "Taiko";
+			} else if (lobby.type.equals("0")) {
+				mode = "Standard";
+			} else if (lobby.type.equals("2")) {
+				mode = "CtB";
+			} else if (lobby.type.equals("3")) {
+				mode = "Mania";
+			}
+			if (lobby.maxAR > 0.0) {
+				maxAR = "" + lobby.maxAR;
+			}
+			String date_start = "2000-1-1";
+			String date_end = "2020-1-1";
+			URIBuilder uriBuilder = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/query/")
+						.setParameter("statuses", status).setParameter("modes", mode)
+						.setParameter("order", "-difficulty").setParameter("max_length", "" + lobby.maxLength)
+						.setParameter("title", name)
+						.setParameter("star", "( " + lobby.minDifficulty + "," + lobby.maxDifficulty + ")")
+						.setParameter("date_start", date_start)
+						.setParameter("date_end", date_end)
+						.setParameter("ar", "( 0," + maxAR + ")");
+			if (author != null) {
+				uriBuilder.setParameter("artist", author);
+			}
+			URI uri = uriBuilder.build();
 			HttpGet request = new HttpGet(uri);
 			HttpResponse response = httpClient.execute(request);
 			InputStream content = response.getEntity().getContent();
@@ -901,25 +966,48 @@ public class IRCBot {
 			}
 			;
 			if (size > 1) {
-				if (size > 3) {
+				if (size > 5) {
 					m_client.sendMessage(lobby.channel, sender + ": " + "Found " + size + " maps, please be more precise!");
-				} else if (size < 4) {
-					m_client.sendMessage(lobby.channel, sender + ": "
-							+ "Please retry being more specific from the one of the following maps and use !add:");
+				} else if (size < 6) {
 					String returnMaps = "";
+					Request askForWhich = new Request();
 					for (int i = 0; i < Info.length(); i++) {
 						String str = "" + Info.get(i);
 						JSONObject beatmap = new JSONObject(str);
+						Beatmap beatmapObj = new Beatmap(beatmap, true);
 						int id = beatmap.getInt("beatmap_id");
 						String artist = beatmap.getString("artist");
 						String title = beatmap.getString("title");
 						String difficulty = beatmap.getString("difficulty_name");
 						String result = artist + " - " + title + " (" + difficulty + ")";
 						String urllink = "http://osu.ppy.sh/b/" + id;
-						returnMaps = returnMaps + " || [" + urllink + " " + result + "]";
+						returnMaps = returnMaps + " || [" + urllink + " " + result + "]"; // returnmaps is dead old code
+						askForWhich.beatmaps.put(beatmapObj.beatmap_id, beatmapObj);
+						askForWhich.bids.add(beatmapObj.beatmap_id);
 					}
-					;
-					m_client.sendMessage(lobby.channel, sender + ": " + returnMaps);
+					if (askForWhich.bids.size() == 0) {
+						m_client.sendMessage(lobby.channel, sender
+								+ " This beatmap set doesnt have any difficulty matching the lobby's range!");
+					} else if (askForWhich.bids.size() == 1) {
+						m_client.sendMessage(lobby.channel,
+								sender + " Selecting the only matching difficulty from the linked set");
+						addBeatmap(lobby, askForWhich.beatmaps.get(askForWhich.bids.iterator().next()));
+					} else {
+						lobby.requests.put(sender, askForWhich);
+						m_client.sendMessage(lobby.channel,
+								sender
+										+ " Please pick one of the following difficulties using !select [number]");
+						for (int a = 0; a < askForWhich.bids.size(); a++) {
+							m_client.sendMessage(lobby.channel, "[" + a + "] || "
+									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).artist + " - "
+									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).title + " "
+									+ "[[https://osu.ppy.sh/b/"
+									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).beatmap_id + ""
+									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).difficulty_name + "]] - "
+									+ round(askForWhich.beatmaps.get(askForWhich.bids.get(a)).difficulty, 2)
+									+ "*");
+						}
+					}
 				}
 			} else if (size == 0) {
 				m_client.sendMessage(lobby.channel, sender + ": 0 beatmaps found in current difficulty range!");
@@ -928,14 +1016,9 @@ public class IRCBot {
 				// int result = Info.getInt(1);
 				String str = "" + Info.get(0);
 				JSONObject beatmap = new JSONObject(str);
-				String artist = beatmap.getString("artist");
-				String title = beatmap.getString("title");
-				String difficulty = beatmap.getString("difficulty_name");
-				String rating = BigDecimal.valueOf(Math.round((beatmap.getDouble("difficulty") * 100d)) / 100d)
-						.toPlainString();
-				int bID = beatmap.getInt("beatmap_id");
-				String result = artist + " - " + title + " [ " + difficulty + " ] - [ " + rating + "* ]";
-				String result2 = "[http://osu.ppy.sh/b/" + bID + " Link]";
+				System.out.println(str);
+				Beatmap beatmapObj = new Beatmap(beatmap, true);
+				addBeatmap(lobby, beatmapObj);
 			}
 		} catch (JSONException | URISyntaxException | IOException e) {
 			e.printStackTrace();
@@ -956,7 +1039,7 @@ public class IRCBot {
 		lobby.timer.continueTimer();
 		if (next.DT) {
 			if (!lobby.DoubleTime) {
-				m_client.sendMessage(lobby.channel, "!mp mods DT Freemod");
+				m_client.sendMessage(lobby.channel, "!mp moFds DT Freemod");
 				lobby.DoubleTime = true;
 			}
 		} else if (next.HT) {
@@ -986,9 +1069,13 @@ public class IRCBot {
 
 		beatmapFile pplife = getPeppyPoints(next.beatmap_id, lobby);
 		if (pplife == null) {
-			m_client.sendMessage(lobby.channel, "Beatmap was unable to be analyzed. Does it exist? Skipping");
-			nextbeatmap(lobby);
-			return;
+			if (!lobby.type.equals("2")) {
+				m_client.sendMessage(lobby.channel, "Beatmap was unable to be analyzed. Does it exist? Skipping");
+				nextbeatmap(lobby);
+				return;
+			} else {
+				m_client.sendMessage(lobby.channel, "CTB analyzer currently doesn't work. Sorry about that.");
+			}
 		}
 		if (lobby.DoubleTime)
 			md = md + "DT";
@@ -996,6 +1083,7 @@ public class IRCBot {
 			md = md + "NC";
 		if (lobby.HalfTime)
 			md = md + "HT";
+		if (pplife != null)
 		if (pplife.ppvalues[0] != 0) {
 			m_client.sendMessage(lobby.channel,
 					md + "SS: " + String.format("%.02f", pplife.ppvalues[0]) + "pp || " + md + "HD: "
@@ -1070,6 +1158,7 @@ public class IRCBot {
 			md = md + "NC";
 		if (lobby.HalfTime)
 			md = md + "HT";
+		if (pplife != null)
 		if (pplife.ppvalues[0] != 0) {
 			m_client.sendMessage(lobby.channel,
 					md + "SS: " + String.format("%.02f", pplife.ppvalues[0]) + "pp || " + md + "HD: "
@@ -1142,5 +1231,14 @@ public class IRCBot {
 		}
 		usernames.put(userId, username);
 		return username;
+	}
+
+	public boolean hasAlreadyRequested(Lobby lobby, String sender) {
+		for (Beatmap beatmap : lobby.beatmapQueue) {
+			if (beatmap.RequestedBy == getId(sender)) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

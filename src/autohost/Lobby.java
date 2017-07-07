@@ -1,15 +1,11 @@
 package autohost;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-
 import autohost.util.Beatmap;
 import autohost.util.Request;
 import autohost.util.Slot;
 import autohost.util.TimerThread;
+
+import java.util.*;
 
 public class Lobby {
 	public String channel = "";
@@ -20,7 +16,7 @@ public class Lobby {
 	public List<String> voteskip  = new LinkedList<>();
 
 	public TimerThread timer;
-	public String name;
+	public String name = "";
 	public Boolean OPLobby = false;
 	public String creatorName;
 
@@ -49,7 +45,7 @@ public class Lobby {
 	public Boolean HalfTime = false;
 
 	public Map<Integer, Slot> slots = new HashMap<>();
-	public Map<Integer, lt.ekgame.beatmap_analyzer.Beatmap> beatmaps = new HashMap<>();
+	public Map<Integer, lt.ekgame.beatmap_analyzer.beatmap.Beatmap> beatmaps = new HashMap<>();
 	public Map<String, Request> requests = new HashMap<>();
 
 	public Map<String, Integer> afk = new HashMap<>();
@@ -145,10 +141,10 @@ public class Lobby {
 		return didvote;
 	}
 
-    public boolean isOP(int userId) {
-        for (int id : OPs) {
-            if (id == userId) return true;
-        }
-        return false;
-    }
+	public boolean isOP(int userId) {
+		for (int id : OPs) {
+			if (id == userId) return true;
+		}
+		return false;
+	}
 }
