@@ -1,21 +1,17 @@
 package autohost.util;
 
-import autohost.AutoHost;
 import autohost.IRCBot;
 
 public class ReconnectTimer extends Thread {
-
-	private AutoHost client;
-	private IRCBot lobby;
+	private IRCBot m_bot;
 	private boolean stopped = false;
 	private long prevTime = System.currentTimeMillis();
 	private long startTime;
 	private long Timeout = 128 * 1000;
 	private boolean added = false;
 
-	public ReconnectTimer(IRCBot client, AutoHost host) {
-		this.lobby = client;
-		this.client = host;
+	public ReconnectTimer(IRCBot bot) {
+		m_bot = bot;
 	}
 
 	public void stopTimer() {
@@ -45,13 +41,10 @@ public class ReconnectTimer extends Thread {
 			// System.out.println("tick");
 			long currTime = System.currentTimeMillis();
 
-			if (currTime-lobby.LastConnection > Timeout){
-				client.ReconnectAutoHost();
+			if (currTime-m_bot.LastConnection > Timeout){
+				m_bot.reconnect();
 			}
-			try {
-				Thread.sleep(1000);
-			} catch (Exception e) {
-			}
+			ThreadUtils.sleepQuietly(1000);
 			prevTime = currTime;
 		}
 	}

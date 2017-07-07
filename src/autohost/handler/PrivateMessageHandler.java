@@ -171,7 +171,7 @@ public class PrivateMessageHandler {
 		if (!m_bot.isOP(sender)) return;
 
 		try {
-			m_bot.connect();
+			m_bot.reconnect();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

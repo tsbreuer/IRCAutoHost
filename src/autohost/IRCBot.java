@@ -4,6 +4,7 @@ import autohost.handler.ChannelMessageHandler;
 import autohost.handler.PrivateMessageHandler;
 import autohost.irc.IRCClient;
 import autohost.util.*;
+import autohost.util.TimerThread;
 import lt.ekgame.beatmap_analyzer.difficulty.Difficulty;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapException;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapParser;
@@ -27,7 +28,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -39,13 +39,12 @@ import static autohost.util.MathUtils.round;
 import static autohost.util.TimeUtils.SECOND;
 
 public class IRCBot {
-    private Config    m_config;
-    private IRCClient m_client;
-    // TODO: Take another look at this and the listen() method
-    private boolean   m_shouldStop;
+	private Config    m_config;
+	private IRCClient m_client;
+	private boolean   m_shouldStop;
 
-    private Map<String, Lobby> m_lobbies = new HashMap<>();
-    private Queue<Lobby> m_deadLobbies = new LinkedList<>();
+	private Map<String, Lobby> m_lobbies = new HashMap<>();
+	private Queue<Lobby> m_deadLobbies = new LinkedList<>();
 
 	// Every single IRC client i tried fails, so i decided to make my own with
 	// blackjack & hookers.
@@ -70,33 +69,33 @@ public class IRCBot {
 	public IRCBot(AutoHost autohost, Config config) throws IOException {
 		// Define all settings. Meh.
 		this.autohost = autohost;
-        m_config = config;
-        m_client = new autohost.irc.IRCClient(
-                config.server,
-                6667,
-                config.user,
-                config.password);
-        m_client.setDelay(config.rate);
+		m_config = config;
+		m_client = new autohost.irc.IRCClient(
+				config.server,
+				6667,
+				config.user,
+				config.password);
+		m_client.setDelay(config.rate);
 		// Mods definition, ignore
 		// Connect
 		connect();
 	}
 
 	public IRCBot(AutoHost autohost, Config config, Map<String, Lobby> Lobbies, Queue<Lobby> LobbyCreation,
-                  Queue<Lobby> deadLobbies, Map<Integer, String> usernames) throws IOException {
+				  Queue<Lobby> deadLobbies, Map<Integer, String> usernames) throws IOException {
 		// Define all settings. Meh.
 		this.autohost = autohost;
-        m_config = config;
-        m_client = new autohost.irc.IRCClient(
-                config.server,
-                6667,
-                config.user,
-                config.password);
-        m_client.setDelay(config.rate);
+		m_config = config;
+		m_client = new autohost.irc.IRCClient(
+				config.server,
+				6667,
+				config.user,
+				config.password);
+		m_client.setDelay(config.rate);
 		this.isReconnecting = true;
 		System.out.println("Reconnect lobbies: " + Lobbies.size());
 		this.m_lobbies = Lobbies;
-        m_deadLobbies = deadLobbies;
+		m_deadLobbies = deadLobbies;
 		this.usernames = usernames;
 		this.LobbyCreation = LobbyCreation;
 		// Mods definition, ignore
@@ -104,26 +103,31 @@ public class IRCBot {
 		connect();
 	}
 
-    public IRCClient getClient() {
-        return m_client;
-    }
+	public IRCClient getClient() {
+		return m_client;
+	}
 
-    public Config getConfig() {
-        return m_config;
-    }
+	public Config getConfig() {
+		return m_config;
+	}
 
-    public Map<String, Lobby> getLobbies() {
-        return m_lobbies;
-    }
+	public Map<String, Lobby> getLobbies() {
+		return m_lobbies;
+	}
 
-    public Queue<Lobby> getDeadLobbies() {
-        return m_deadLobbies;
-    }
+	public Queue<Lobby> getDeadLobbies() {
+		return m_deadLobbies;
+	}
 
-    public void connect() throws IOException {
-        m_client.connect();
-        listen();
-    }
+	public void connect() throws IOException {
+		while(true) {
+			if (!m_client.isDisconnected()) {
+				m_client.disconnect();
+			}
+			m_client.connect();
+			listen();
+		}
+	}
 
 	private void listen() throws IOException {
 		BufferedReader reader = new BufferedReader(
@@ -159,23 +163,16 @@ public class IRCBot {
 					System.out.println((System.currentTimeMillis() - LastConnection));
 				}
 				if ((System.currentTimeMillis() - LastConnection) > (100 * SECOND)) {
-					autohost.ReconnectAutoHost();
 					System.out.println("Connection to bancho Lost. Reconnecting...");
+					break;
 				}
 			}
 		}
 		reader.close();
 	}
 
-	public void stopIRC() {
-		try {
-			m_shouldStop = true;
-            m_client.disconnect();
-
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	public void reconnect() {
+		m_shouldStop = true;
 	}
 
 	public void log(String line) {
@@ -222,10 +219,10 @@ public class IRCBot {
 			String target = channelmatch.group(2);
 			String message = channelmatch.group(3);
 			if (target.startsWith("#")) {
-			    new ChannelMessageHandler(this).handle(target, user, message);
-            } else {
-			    new PrivateMessageHandler(this).handle(user, message);
-            }
+				new ChannelMessageHandler(this).handle(target, user, message);
+			} else {
+				new PrivateMessageHandler(this).handle(user, message);
+			}
 		}
 
 		// :HyPeX!cho@ppy.sh JOIN :#mp_29904363
@@ -356,7 +353,7 @@ public class IRCBot {
 
 	public void removeLobby(Lobby lobby) {
 		synchronized (m_lobbies) {
-            m_deadLobbies.add(m_lobbies.get(lobby.channel));
+			m_deadLobbies.add(m_lobbies.get(lobby.channel));
 			m_lobbies.remove(lobby.channel);
 			lobby.timer.stopTimer();
 		}
@@ -478,7 +475,7 @@ public class IRCBot {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
-        HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
+		HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
 		URI uri = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/api/get_beatmaps")
 				.setParameter("k", m_config.apikey).setParameter("b", "" + beatmapId).setParameter("m", lobby.type)
 				.build();
@@ -678,12 +675,12 @@ public class IRCBot {
 						modsString = "NOMOD";
 					m_client.sendMessage(lobby.channel,
 							user
-                                    + " || Rank: " + rank
-                                    + " || Mods: " + modsString
-                                    + " || Hits: " + c300s + "/" + c100s + "/" + c50s + "/" + miss
-                                    + " || Combo: (" + ppcalc.getMaxCombo() + "/" + maxcombo
-                                    + ") || " + String.format("%.02f", +acc * 100)
-                                    + "% || PP: " + String.format("%.02f", pp) + " ");
+									+ " || Rank: " + rank
+									+ " || Mods: " + modsString
+									+ " || Hits: " + c300s + "/" + c100s + "/" + c50s + "/" + miss
+									+ " || Combo: (" + ppcalc.getMaxCombo() + "/" + maxcombo
+									+ ") || " + String.format("%.02f", +acc * 100)
+									+ "% || PP: " + String.format("%.02f", pp) + " ");
 				}
 			}
 
@@ -696,7 +693,7 @@ public class IRCBot {
 	}
 
 	public beatmapFile getPeppyPoints(int beatmapid, Lobby lobby) {
-        if (lobby.type.equals("2")) return null;
+		if (lobby.type.equals("2")) return null;
 
 		double[] str = new double[4];
 		beatmapFile bm = new beatmapFile(beatmapid);
@@ -717,7 +714,7 @@ public class IRCBot {
 			BeatmapParser parser = new BeatmapParser();
 			lt.ekgame.beatmap_analyzer.beatmap.Beatmap cbp = parser.parse(content);
 			if (cbp == null) {
-			    m_client.sendMessage(lobby.channel, "Beatmap " + beatmapid
+				m_client.sendMessage(lobby.channel, "Beatmap " + beatmapid
 						+ " is no longer available.");
 			}
 			Score ss = Score.of(cbp).combo(cbp.getMaxCombo()).build();
@@ -891,7 +888,7 @@ public class IRCBot {
 				.setParameter("max_length", "300")
 				.setParameter("star", "( " + lobby.minDifficulty + "," + lobby.maxDifficulty + ")")
 				.setParameter("date_start", date_start).setParameter("date_end", date_end)
-                .setParameter("ammount", "5")
+				.setParameter("ammount", "5")
 				.setParameter("ar", "( 0," + maxAR + ")").build();
 		HttpGet request = new HttpGet(uri);
 		request.setHeader("Accept", "json");

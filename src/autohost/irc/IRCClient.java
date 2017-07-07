@@ -8,83 +8,103 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class IRCClient {
-    private static final int DEFAULT_DELAY = 200;
+	private static final int DEFAULT_DELAY = 200;
 
-    private final String m_address;
-    private final int    m_port;
-    private final String m_user;
-    private final String m_password;
+	private final String m_address;
+	private final int    m_port;
+	private final String m_user;
+	private final String m_password;
 
-    private Socket      m_socket;
-    private PrintStream m_outStream;
+	private Socket      m_socket;
+	private PrintStream m_outStream;
 
-    private RateLimitedFlusher              m_flusher;
-    private Map<String, RateLimitedChannel> m_channels;
-    private int                             m_delay;
+	private RateLimitedFlusher              m_flusher;
+	private Map<String, RateLimitedChannel> m_channels;
+	private int                             m_delay;
 
-    public IRCClient(String address, int port, String user, String password) {
-        m_address = address;
-        m_port = port;
-        m_user = user;
-        m_password = password;
+	private boolean m_disconnected;
 
-        m_channels = new HashMap<>();
-        m_delay = DEFAULT_DELAY;
-    }
+	public IRCClient(String address, int port, String user, String password) {
+		m_address = address;
+		m_port = port;
+		m_user = user;
+		m_password = password;
 
-    public void setDelay(int delay) {
-        m_delay = delay;
-    }
+		m_channels = new HashMap<>();
+		m_delay = DEFAULT_DELAY;
 
-    public InputStream getInputStream() throws IOException {
-        return m_socket.getInputStream();
-    }
+		m_disconnected = true;
+	}
 
-    public String getUser() {
-        return m_user;
-    }
+	public boolean isDisconnected() {
+		return m_disconnected;
+	}
 
-    Map<String, RateLimitedChannel> getChannels() {
-        return m_channels;
-    }
+	public void setDelay(int delay) {
+		m_delay = delay;
+	}
 
-    public void connect() throws IOException {
-        m_socket = new Socket(m_address, m_port);
-        m_outStream = new PrintStream(m_socket.getOutputStream());
+	public InputStream getInputStream() throws IOException {
+		return m_socket.getInputStream();
+	}
 
-        m_flusher = new RateLimitedFlusher(this, m_delay);
-        m_flusher.start();
+	public String getUser() {
+		return m_user;
+	}
 
-        register();
-    }
+	Map<String, RateLimitedChannel> getChannels() {
+		return m_channels;
+	}
 
-    public void disconnect() throws IOException {
-        m_outStream.close();
-        m_socket.close();
-    }
+	public void connect() throws IOException {
+		if (!m_disconnected) {
+			System.out.println("Attempt to connect the IRCClient without first disconnecting.");
+			return;
+		}
 
-    public void write(String message) {
-        write(message, false);
-    }
+		m_socket = new Socket(m_address, m_port);
+		m_outStream = new PrintStream(m_socket.getOutputStream());
 
-    private void write(String message, boolean censor) {
-        if (!censor) {
-            System.out.println(message);
-        }
-        m_outStream.println(message);
-    }
+		m_flusher = new RateLimitedFlusher(this, m_delay);
+		m_flusher.start();
 
-    private void register() {
-        write("PASS" + " " + m_password, true);
-        write("NICK" + " " + m_user);
-        write("USER" + " " + m_user + " HyPeX irc.ppy.sh : Osu! Autohost Bot");
-    }
+		m_disconnected = false;
 
-    public void sendMessage(String channel, String message) {
-        if (!m_channels.containsKey(channel)) {
-            m_channels.put(channel, new RateLimitedChannel(channel, m_delay));
-        }
+		register();
+	}
 
-        m_channels.get(channel).addMessage(message);
-    }
+	public void disconnect() throws IOException {
+		if (m_disconnected) {
+			System.out.println("Attempt to disconnect without first connecting.");
+			return;
+		}
+		m_flusher.interrupt();
+		m_outStream.close();
+		m_socket.close();
+	}
+
+	public void write(String message) {
+		write(message, false);
+	}
+
+	private void write(String message, boolean censor) {
+		if (!censor) {
+			System.out.println(message);
+		}
+		m_outStream.println(message);
+	}
+
+	private void register() {
+		write("PASS" + " " + m_password, true);
+		write("NICK" + " " + m_user);
+		write("USER" + " " + m_user + " HyPeX irc.ppy.sh : Osu! Autohost Bot");
+	}
+
+	public void sendMessage(String channel, String message) {
+		if (!m_channels.containsKey(channel)) {
+			m_channels.put(channel, new RateLimitedChannel(channel, m_delay));
+		}
+
+		m_channels.get(channel).addMessage(message);
+	}
 }
