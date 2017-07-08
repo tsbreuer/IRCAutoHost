@@ -31,7 +31,6 @@ public class PrivateMessageHandler {
 				m_client.sendMessage(sender,
 						"This account is a bot. Command prefix is !. Send me !help for more info.");
 			}
-
 			return;
 		}
 

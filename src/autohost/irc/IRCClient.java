@@ -81,6 +81,7 @@ public class IRCClient {
 		m_flusher.interrupt();
 		m_outStream.close();
 		m_socket.close();
+		m_disconnected = true;
 	}
 
 	public void write(String message) {

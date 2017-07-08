@@ -126,6 +126,8 @@ public class IRCBot {
 			}
 			m_client.connect();
 			listen();
+			m_shouldStop = false;
+			ThreadUtils.sleepQuietly(SECOND);
 		}
 	}
 
