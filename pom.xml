@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>IRCAutohost</groupId>
     <artifactId>IRCAutohost</artifactId>
-    <version>0.1</version>
+    <version>3.0</version>
     <name>osu IRC Autohost</name>
     <properties>
         <maven.compiler.target>1.8</maven.compiler.target>

@@ -58,7 +58,6 @@ public class IRCBot {
 
 	/// This is the reconnection data, just info i store for checking wether
 	/// bancho went RIP
-	public Boolean isReconnecting = false;
 	public long LastConnection = System.currentTimeMillis();
 	public long LastRequested = System.currentTimeMillis();
 	public String LastMessagePING = "";
@@ -92,7 +91,6 @@ public class IRCBot {
 				config.user,
 				config.password);
 		m_client.setDelay(config.rate);
-		this.isReconnecting = true;
 		System.out.println("Reconnect lobbies: " + Lobbies.size());
 		this.m_lobbies = Lobbies;
 		m_deadLobbies = deadLobbies;
@@ -188,13 +186,9 @@ public class IRCBot {
 		try {
 			if (endofmotdmatch.matches()) {
 				System.out.println("End of motd, we're connected.");
-				if (this.isReconnecting) {
-					System.out.println("Lobby is from reconnection.");
-					this.isReconnecting = false;
-					for (Lobby lobby : m_lobbies.values()) {
-						m_lobbies.remove(lobby.channel);
-						reconnectLobby(lobby);
-					}
+				for (Lobby lobby : m_lobbies.values()) {
+					m_lobbies.remove(lobby.channel);
+					reconnectLobby(lobby);
 				}
 			}
 		} catch (ConcurrentModificationException e) {
