@@ -1,4 +1,4 @@
-package autohost.utils;
+package autohost.util;
 
 import java.util.HashMap;
 import java.util.LinkedList;

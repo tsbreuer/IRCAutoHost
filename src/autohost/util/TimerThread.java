@@ -1,28 +1,30 @@
-package autohost.utils;
+package autohost.util;
 
-import autohost.IRCClient;
+import autohost.IRCBot;
 import autohost.Lobby;
 
-public class TimerThread extends Thread {
+import static autohost.util.TimeUtils.MINUTE;
+import static autohost.util.TimeUtils.SECOND;
 
-	private IRCClient client;
-	private Lobby lobby;
+public class TimerThread extends Thread {
+	private IRCBot  m_bot;
+	private Lobby   lobby;
 	private boolean stopped = false;
-	private long prevTime = System.currentTimeMillis();
-	private long startTime;
-	private long startAfter = 2 * 60 * 1000;
+	private long    prevTime = System.currentTimeMillis();
+	private long    startTime;
+	private long    startAfter = 2 * MINUTE;
 	private boolean added = false;
 
-	public TimerThread(IRCClient handler, Lobby lobby) {
-		this.client = handler;
+	public TimerThread(IRCBot bot, Lobby lobby) {
+		m_bot = bot;
 		this.lobby = lobby;
 	}
 
 	public void stopTimer() {
 		stopped = true;
 	}
-	
-	public void continueTimer(){
+
+	public void continueTimer() {
 		stopped = false;
 		resetTimer();
 	}
@@ -32,7 +34,7 @@ public class TimerThread extends Thread {
 			return false;
 
 		added = true;
-		startTime = startTime + 1 * 60 * 1000;
+		startTime = startTime + MINUTE;
 		return true;
 
 	}
@@ -47,18 +49,17 @@ public class TimerThread extends Thread {
 	}
 
 	private void sendMessage(String message) {
-		client.SendMessage(lobby.channel, message);
+		m_bot.getClient().sendMessage(lobby.channel, message);
 	}
 
 	public void run() {
 		resetTimer();
 		while (!stopped) {
-			// System.out.println("tick");
 			long currTime = System.currentTimeMillis();
-			long min3mark = startTime - 3 * 60 * 1000;
-			long min2mark = startTime - 2 * 60 * 1000;
-			long min1mark = startTime - 1 * 60 * 1000;
-			long sec10mark = startTime - 10 * 1000;
+			long min3mark = startTime - 3 * MINUTE;
+			long min2mark = startTime - 2 * MINUTE;
+			long min1mark = startTime - 1 * MINUTE;
+			long sec10mark = startTime - 10 * SECOND;
 			if (currTime >= min3mark && prevTime < min3mark) {
 				sendMessage("Starting in 3 minutes. Please use !r or !ready if you're ready to start.");
 			}
@@ -72,15 +73,12 @@ public class TimerThread extends Thread {
 				lobby.slots.clear();
 				sendMessage("!mp settings");
 				sendMessage("Starting in 10 seconds.");
-				
+
 			}
-			if (currTime >= startTime && prevTime <= startTime) {			
-				client.tryStart(lobby);
+			if (currTime >= startTime && prevTime <= startTime) {
+				m_bot.tryStart(lobby);
 			}
-			try {
-				Thread.sleep(1000);
-			} catch (Exception e) {
-			}
+			ThreadUtils.sleepQuietly(SECOND);
 			prevTime = currTime;
 		}
 	}

@@ -18,7 +18,7 @@ public class Config {
 	public String apikey;
 	public List<Integer> ops = new ArrayList<>();
 
-	public Config(String path) throws IOException, FileNotFoundException {
+	public Config(String path) throws IOException {
 		Properties prop = new Properties();
 		FileInputStream input = new FileInputStream(path);
 		prop.load(input);

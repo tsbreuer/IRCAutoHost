@@ -1,4 +1,4 @@
-package autohost.utils;
+package autohost.util;
 
 public class Slot {
 	public int id;
