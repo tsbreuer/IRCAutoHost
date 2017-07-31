@@ -265,6 +265,7 @@ public class ChannelMessageHandler {
 			for (Slot player : lobby.slots.values()) {
 				if (!lobby.scores.containsKey(player.name)) {
 					m_bot.addAFK(lobby, player.name);
+					m_bot.m_writer.println("Player name: '"+player.name+"'");
 				}
 			}
 			m_bot.nextbeatmap(lobby);
@@ -284,6 +285,8 @@ public class ChannelMessageHandler {
 		if (scoreMatcher.matches()) {
 			if (Integer.valueOf(scoreMatcher.group(2)) == 0) {
 				m_bot.addAFK(lobby, scoreMatcher.group(1));
+				m_bot.m_writer.println("AFK? Line: |"+message+"|");
+				m_bot.m_writer.println("Player name: '"+scoreMatcher.group(1)+"'");
 			} else {
 				m_bot.removeAFK(lobby, scoreMatcher.group(1));
 				lobby.scores.put(scoreMatcher.group(1), Integer.valueOf(scoreMatcher.group(2)));
@@ -992,7 +995,7 @@ public class ChannelMessageHandler {
 	private void handleMinDifficulty(Lobby lobby, String sender, String message) {
 		if (!lobby.isOP(m_bot.getId(sender))) return;
 
-		Matcher diffM = RegexUtils.matcher("mindiff (.+)", message);
+		Matcher diffM = RegexUtils.matcher("mindiff (\\d+(?:\\.\\d+)?)", message);
 		if (diffM.matches()) {
 			lobby.minDifficulty = Double.valueOf(diffM.group(1));
 			m_client.sendMessage(lobby.channel,

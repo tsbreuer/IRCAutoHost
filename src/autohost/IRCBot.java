@@ -25,9 +25,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -39,6 +42,7 @@ import static autohost.util.MathUtils.round;
 import static autohost.util.TimeUtils.SECOND;
 
 public class IRCBot {
+	public PrintWriter m_writer;
 	private Config    m_config;
 	private IRCClient m_client;
 	private boolean   m_shouldStop;
@@ -68,6 +72,13 @@ public class IRCBot {
 	public IRCBot(AutoHost autohost, Config config) throws IOException {
 		// Define all settings. Meh.
 		this.autohost = autohost;
+		try {
+			this.m_writer = new PrintWriter("afklog.txt", "UTF-8");
+			this.m_writer.write("Bot started. This is a error log file");
+		} catch (FileNotFoundException | UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		m_config = config;
 		m_client = new autohost.irc.IRCClient(
 				config.server,
