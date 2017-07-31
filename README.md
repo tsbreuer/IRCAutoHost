@@ -16,4 +16,9 @@ Update #2: After getting my own IRC working, I'm now mapping all IRC data and th
 Update #3: Bot is working reliably well now. Javaguru (Kabaru) will now do a code refactoring and small API for a web interface, at which point I'll finish fixing the last bugs and then set up the public usability.
 
 ---------------
+
+Update #4: Bot is pretty much stable. A refactoring was fully made by Kieve. i'll start working on the TournamentAutoHost branch, purpose of which should be obvious.
+
+---------------
+
 This is a bot run only and only by me on the AutoHost account while the commands and usage will be public. This github is setup for the purpose of showing the code and to use as an example for other projects. Big shoutout and thanks for @ek and @ThePooN and the whole #programming channel from osu!soup Discord.
