@@ -73,8 +73,9 @@ public class IRCBot {
 		// Define all settings. Meh.
 		this.autohost = autohost;
 		try {
-			this.m_writer = new PrintWriter("afklog.txt", "UTF-8");
-			this.m_writer.write("Bot started. This is a error log file");
+			m_writer = new PrintWriter("afklog.txt", "UTF-8");
+			m_writer.write("Bot started. This is a error log file");
+			m_writer.flush();
 		} catch (FileNotFoundException | UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

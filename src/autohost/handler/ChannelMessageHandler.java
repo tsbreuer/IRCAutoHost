@@ -266,6 +266,7 @@ public class ChannelMessageHandler {
 				if (!lobby.scores.containsKey(player.name)) {
 					m_bot.addAFK(lobby, player.name);
 					m_bot.m_writer.println("Player name: '"+player.name+"'");
+					m_bot.m_writer.flush();
 				}
 			}
 			m_bot.nextbeatmap(lobby);
