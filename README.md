@@ -17,7 +17,7 @@ Update #3: Bot is working reliably well now. Javaguru (Kabaru) will now do a cod
 
 ---------------
 
-Update #4: Bot is pretty much stable. A refactoring was fully made by Kieve. i'll start working on the TournamentAutoHost branch, purpose of which should be obvious.
+Update #4: Bot is pretty much stable. A refactoring was fully made by Kieve. i'll start working on the [TournamentAutoHost](https://github.com/tsbreuer/IRCAutoHost/tree/TournamentAutoHost) branch, purpose of which should be obvious.
 
 ---------------
 
