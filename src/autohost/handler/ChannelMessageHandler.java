@@ -92,6 +92,7 @@ public class ChannelMessageHandler {
 			System.out.println("New room name! " + name);
 			lobby.name = name;
 			lobby.mpID = Integer.valueOf(rNM.group(2));
+			return;
 		}
 
 		// Win condition... meh
@@ -100,19 +101,24 @@ public class ChannelMessageHandler {
 			System.out.println("Team & Condition set");
 			lobby.teamgamemode = rTM.group(1);
 			lobby.winCondition = rTM.group(2);
+			return;
 		}
 
 		// Beatmap change... i guess thats k?
 		Matcher bM = RegexUtils.matcher("Beatmap: https://osu.ppy.sh/b/(\\d+) (.+)- (.+)", message);
 		if (bM.matches()) {
-			lobby.currentBeatmap = Integer.valueOf(bM.group(1));
-			lobby.currentBeatmapAuthor = bM.group(2);
-			lobby.currentBeatmapName = bM.group(3);
+			if (lobby.currentBeatmap != null) {
+				lobby.currentBeatmap.beatmap_id = Integer.valueOf(bM.group(1));
+				lobby.currentBeatmapAuthor = bM.group(2);
+				lobby.currentBeatmapName = bM.group(3);
+			}
+			return;
 		}
 
 		Matcher iMM = RegexUtils.matcher("Invalid map ID provided", message);
 		if (iMM.matches()) {
 			m_bot.nextbeatmap(lobby);
+			return;
 		}
 
 		// Is this one even worth adding?
@@ -122,6 +128,7 @@ public class ChannelMessageHandler {
 				// m_client.sendMessage(lobby.channel, "Warning: Player count
 				// mismatch! Did bot reconnect?");
 			}
+			return;
 		}
 
 		Matcher passmatch = RegexUtils.matcher("(.+) the match password", message);
@@ -135,6 +142,7 @@ public class ChannelMessageHandler {
 					m_client.sendMessage(lobby.channel, "!mp password");
 				}
 			}
+			return;
 		}
 
 		// Slot info on players... generally should be empty on start.. but
@@ -156,14 +164,18 @@ public class ChannelMessageHandler {
 				slotM.status = sM.group(3);
 				slotM.id = slotN;
 				slotM.playerid = Integer.valueOf(sM.group(4));
-				slotM.name = sM.group(5);
+				slotM.name = sM.group(5).trim();
+				m_bot.m_writer.println("Slot movmenet: '" + sM.group(5).trim() + "'");
+				m_bot.m_writer.flush();
 				lobby.slots.replace(slotN, slotM);
 			} else {
 				Slot slotM = new Slot();
 				slotM.status = sM.group(3);
 				slotM.id = slotN;
 				slotM.playerid = Integer.valueOf(sM.group(4));
-				slotM.name = sM.group(5);
+				slotM.name = sM.group(5).trim();
+				m_bot.m_writer.println("Slot movmenet: '" + sM.group(5).trim() + "'");
+				m_bot.m_writer.flush();
 				lobby.slots.put(slotN, slotM);
 			}
 			return;
@@ -179,6 +191,8 @@ public class ChannelMessageHandler {
 			int playerId = m_bot.getId(playerName);
 			String status = "Not Ready";
 			Slot newSlot = new Slot(jslot, playerName, playerId, status);
+			m_bot.m_writer.println("New slot: '" + playerName + "'");
+			m_bot.m_writer.flush();
 			if (lobby.slots.containsKey(jslot)) {
 				lobby.slots.replace(jslot, newSlot);
 			} else {
@@ -189,8 +203,9 @@ public class ChannelMessageHandler {
 			int id = m_bot.getId(playerName);
 			if (lobby.isOP(id)) {
 				m_client.sendMessage(lobby.channel, "Operator " + playerName + " has joined. Welcome!");
-				m_client.sendMessage(lobby.channel, "!mp addref #" + playerName);
+				m_client.sendMessage(lobby.channel, "!mp addref " + playerName);
 			}
+			return;
 		}
 
 		Matcher moveMatcher = RegexUtils.matcher("(.+) moved to slot (\\d+)", message);
@@ -207,6 +222,7 @@ public class ChannelMessageHandler {
 				}
 			}
 			lobby.slots.put(Integer.valueOf(moveMatcher.group(2)), player);
+			return;
 		}
 
 		// :BanchoBot!cho@ppy.sh PRIVMSG #mp_32757177 :TrackpadEasy left the
@@ -226,17 +242,20 @@ public class ChannelMessageHandler {
 					m_bot.removeLobby(lobby);
 				}
 			}
+			return;
 		}
 
 		if (message.equalsIgnoreCase("All players are ready")) {
 			m_client.sendMessage(lobby.channel, "All players are ready! starting...");
 			m_client.sendMessage(lobby.channel, "!mp start 5");
 			lobby.timer.stopTimer();
+			return;
 		}
 
 		if (message.equalsIgnoreCase("The match has started!")) {
 			lobby.scores.clear();
 			lobby.Playing = true;
+			return;
 		}
 
 		if (message.equalsIgnoreCase("The match has finished!")) {
@@ -248,7 +267,7 @@ public class ChannelMessageHandler {
 			for (Slot player : lobby.slots.values()) {
 				if (!lobby.scores.containsKey(player.name)) {
 					m_bot.addAFK(lobby, player.name);
-					m_bot.m_writer.println("Player name: '" + player.name + "'");
+					m_bot.m_writer.println("AFK!: Player name: '" + player.name + "'");
 					m_bot.m_writer.flush();
 				}
 			}
@@ -261,9 +280,10 @@ public class ChannelMessageHandler {
 			 * m_client.sendMessage(lobby.channel, player + " finished " + (i +
 			 * 1) + "!"); }
 			 */
+			return;
 		}
 
-		Matcher scoreMatcher = RegexUtils.matcher("(.+) has finished playing \\(Score: (\\d+), (\\D+)\\)", message);
+		Matcher scoreMatcher = RegexUtils.matcher("(.+) finished playing \\(Score: (\\d+), (\\D+)\\).", message);
 		if (scoreMatcher.matches()) {
 			if (Integer.valueOf(scoreMatcher.group(2)) == 0) {
 				m_bot.addAFK(lobby, scoreMatcher.group(1));
@@ -274,15 +294,54 @@ public class ChannelMessageHandler {
 				m_bot.removeAFK(lobby, scoreMatcher.group(1));
 				lobby.scores.put(scoreMatcher.group(1), Integer.valueOf(scoreMatcher.group(2)));
 			}
+			return;
 		}
 
 		// Beatmap changed to: Rameses B - Neon Rainbow (ft. Anna Yvette)
 		// [Easy] (https://osu.ppy.sh/b/961779)
-		Matcher beatmapMatcher = RegexUtils.matcher("Beatmap changed to: (.+) [(.+)] (https://osu.ppy.sh/b/(.+))",
+		Matcher beatmapMatcher = RegexUtils.matcher("Changed beatmap to (https://osu.ppy.sh/b/(.+)) (.+) - (.+)",
 				message);
 		if (beatmapMatcher.matches()) {
-
+			return;
 		}
+
+		Matcher modeMatcher = RegexUtils.matcher("Changed match mode to (.+)", message);
+		if (modeMatcher.matches()) {
+			return;
+		}
+
+		Matcher modsSelection = RegexUtils.matcher("Active mods: (.+)", message);
+		if (modsSelection.matches()) {
+			return;
+		}
+
+		Matcher ctdaborted = RegexUtils.matcher("Countdown aborted", message);
+		if (ctdaborted.matches()) {
+			return;
+		}
+
+		Matcher matchunlock = RegexUtils.matcher("Unlocked the match", message);
+		if (matchunlock.matches()) {
+			return;
+		}
+
+		Matcher matchlock = RegexUtils.matcher("Locked the match", message);
+		if (matchlock.matches()) {
+			return;
+		}
+
+		Matcher matchctd = RegexUtils.matcher("Match starts in (.+)", message);
+		if (matchctd.matches()) {
+			return;
+		}
+
+		Matcher modsawp = RegexUtils.matcher("Disabled all mods, enabled (.+)", message);
+		if (modsawp.matches()) {
+			return;
+		}
+
+		m_bot.m_writer.println("Regext error Line: |" + message + "|");
+		m_bot.m_writer.flush();
 		return;
 	}
 
@@ -337,6 +396,10 @@ public class ChannelMessageHandler {
 			break;
 		case "graveyard":
 			handleGraveyard(lobby, sender);
+			break;
+		case "prev":
+		case "previous":
+			handlePrevious(lobby, sender);
 			break;
 		case "lock":
 			handleLock(lobby, sender);
@@ -414,6 +477,19 @@ public class ChannelMessageHandler {
 		default:
 			// Unknown command.
 		}
+	}
+
+	private void handlePrevious(Lobby lobby, String sender) {
+		if (lobby.previousBeatmap == null) {
+			m_client.sendMessage(lobby.channel,
+					sender + " there is no beatmap in the last played. Did the lobby just get created?");
+
+		} else {
+			m_client.sendMessage(lobby.channel,
+					"The lastest beatmap played was [https://osu.ppy.sh/b/" + lobby.previousBeatmap.beatmap_id + " "
+							+ lobby.previousBeatmap.artist + " - " + lobby.previousBeatmap.title + "]");
+		}
+		return;
 	}
 
 	private void handleAdd(Lobby lobby, String sender, String message) {
@@ -669,7 +745,7 @@ public class ChannelMessageHandler {
 			m_client.sendMessage(sender, "The lobby is currently playing, you cant vote for starting right now.");
 			return;
 		}
-		if (lobby.currentBeatmap == 0) {
+		if (lobby.currentBeatmap != null) {
 			m_client.sendMessage(sender, "Please add a map before starting playing!");
 			return;
 		}

@@ -371,7 +371,7 @@ public class IRCBot {
 		lobby.beatmapQueue.add(beatmap);
 		m_client.sendMessage(lobby.channel, beatmap.artist + " - " + beatmap.title + "(" + beatmap.difficulty_name + ")" + " ["
 				+ round(beatmap.difficulty, 2) + "*] was added to the queue! Pos: " + lobby.beatmapQueue.size());
-		if (lobby.currentBeatmap == null || (lobby.currentBeatmap == 0)) {
+		if (lobby.currentBeatmap == null) {
 			nextbeatmap(lobby);
 		}
 	}
@@ -634,7 +634,7 @@ public class IRCBot {
 				m_client.sendMessage(lobby.channel, user + " No beatmap was played yet!");
 				return;
 			}
-			lastBeatmap = lobby.previousBeatmap;
+			lastBeatmap = lobby.previousBeatmap.beatmap_id;
 			Boolean foundMap = false;
 			for (int i = 0; i < array.length(); i++) {
 				String str = "" + array.get(i);
@@ -1038,7 +1038,7 @@ public class IRCBot {
 		lobby.Playing = false;
 		m_client.sendMessage(lobby.channel, "!mp map " + next.beatmap_id + " " + lobby.type);
 		lobby.previousBeatmap = lobby.currentBeatmap;
-		lobby.currentBeatmap = next.beatmap_id;
+		lobby.currentBeatmap = next;
 		lobby.currentBeatmapAuthor = next.artist;
 		lobby.currentBeatmapName = next.title;
 		lobby.timer.continueTimer();
@@ -1103,6 +1103,7 @@ public class IRCBot {
 		lobby.voteskip.clear();
 		lobby.voteStart.clear();
 		lobby.Playing = false;
+		lobby.beatmapPlayed.add(lobby.currentBeatmap);
 		Beatmap next = lobby.beatmapQueue.poll();
 		if (next == null) {
 			if (lobby.TrueRandom) {
@@ -1122,7 +1123,7 @@ public class IRCBot {
 
 		m_client.sendMessage(lobby.channel, "!mp map " + next.beatmap_id + " " + lobby.type);
 		lobby.previousBeatmap = lobby.currentBeatmap;
-		lobby.currentBeatmap = next.beatmap_id;
+		lobby.currentBeatmap = next;
 		lobby.currentBeatmapAuthor = next.artist;
 		lobby.currentBeatmapName = next.title;
 		lobby.timer.continueTimer();
@@ -1171,7 +1172,6 @@ public class IRCBot {
 							+ String.format("%.02f", pplife.ppvalues[2]) + "pp || " + md + "HDHR: "
 							+ String.format("%.02f", pplife.ppvalues[3]) + "pp");
 		}
-		lobby.beatmapPlayed.add(next);
 	}
 
 	public Boolean isOP(String user) {
