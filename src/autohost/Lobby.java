@@ -18,7 +18,7 @@ public class Lobby {
 	public TimerThread timer;
 	public String name = "";
 	public Boolean OPLobby = false;
-	public String creatorName;
+	public String creatorName = "";
 
 	public int maxLength = 360;
 
@@ -32,7 +32,7 @@ public class Lobby {
 
 	public String currentBeatmapAuthor = "HyPeX";
 	public String currentBeatmapName = "Some random shit";
-	public Integer currentBeatmap = 0;
+	public Beatmap currentBeatmap = null;
 
 	public Double maxAR =  0.0;
 
@@ -99,7 +99,7 @@ public class Lobby {
 	public Boolean onlyDifficulty = true; // Lock lobby to difficulty
 	public Double minDifficulty = (double) 4;
 	public Double maxDifficulty = (double) 5;
-	public Integer previousBeatmap;
+	public Beatmap previousBeatmap;
 
 
 	public Lobby(String channel) {
