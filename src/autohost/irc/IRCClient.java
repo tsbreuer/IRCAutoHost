@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.Socket;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -89,8 +90,8 @@ public class IRCClient {
 	}
 
 	private void write(String message, boolean censor) {
-		if (!censor) {
-			System.out.println(message);
+		if (!censor && !message.startsWith("PING") && !message.startsWith("PONG")) {
+			System.out.println("SEND(" + new Date(System.currentTimeMillis()) + "): " + message);
 		}
 		m_outStream.println(message);
 	}

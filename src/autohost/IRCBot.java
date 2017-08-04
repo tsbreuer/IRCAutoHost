@@ -39,9 +39,9 @@ import static autohost.util.MathUtils.round;
 import static autohost.util.TimeUtils.SECOND;
 
 public class IRCBot {
-	private Config    m_config;
-	private IRCClient m_client;
-	private boolean   m_shouldStop;
+	private final IRCClient m_client;
+	private Config          m_config;
+	private boolean         m_shouldStop;
 
 	private Map<String, Lobby> m_lobbies = new HashMap<>();
 	private Queue<Lobby> m_deadLobbies = new LinkedList<>();
@@ -56,11 +56,8 @@ public class IRCBot {
 	// TODO: This should be a BiMap
 	public Map<Integer, String> usernames = new HashMap<>();
 
-	/// This is the reconnection data, just info i store for checking wether
-	/// bancho went RIP
-	public long LastConnection = System.currentTimeMillis();
-	public long LastRequested = System.currentTimeMillis();
-	public String LastMessagePING = "";
+	// This is the reconnection data, just info i store for checking if Bancho went RIP
+	private ReconnectTimer m_reconnectTimer;
 
 	// Main code
 
@@ -117,14 +114,28 @@ public class IRCBot {
 		return m_deadLobbies;
 	}
 
-	public void connect() throws IOException {
+	public void connect() {
+		if (m_reconnectTimer == null) {
+			m_reconnectTimer = new ReconnectTimer(this);
+		}
 		while(true) {
-			if (!m_client.isDisconnected()) {
-				m_client.disconnect();
+			m_reconnectTimer.messageReceived();
+			try {
+				System.out.println("Attempting to connect.");
+				if (!m_client.isDisconnected()) {
+					System.out.println("Disconnecting first though.");
+					m_client.disconnect();
+				}
+				m_client.connect();
+				System.out.println("Listening...");
+				listen();
+				System.out.println("Done listening...");
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
-			m_client.connect();
-			listen();
-			m_shouldStop = false;
+			synchronized (m_client) {
+				m_shouldStop = false;
+			}
 			ThreadUtils.sleepQuietly(SECOND);
 		}
 	}
@@ -134,37 +145,26 @@ public class IRCBot {
 				new InputStreamReader(m_client.getInputStream()));
 
 		String msg = "";
-		while ((msg = reader.readLine()) != null && !m_shouldStop) {
-			if (msg.contains("001")) {
-				if (!msg.contains("cho@ppy.sh QUIT")) {
+		boolean safeShouldStop;
+		synchronized (m_client) {
+			safeShouldStop = m_shouldStop;
+		}
+		while ((msg = reader.readLine()) != null && !safeShouldStop) {
+			long now = System.currentTimeMillis();
+			m_reconnectTimer.messageReceived();
+
+			if (!msg.contains("cho@ppy.sh QUIT")) {
+				if (msg.contains("001")) {
 					System.out.println("Logged in");
 					System.out.println("Line: " + msg);
-				}
-			}
-			if (msg.contains("PING")) {
-				if (!msg.contains("cho@ppy.sh QUIT")) {
-					if (msg.length() > msg.indexOf("PING") + 5) {
-						String pingRequest = msg.substring(msg.indexOf("PING") + 5);
-						m_client.write("PONG " + pingRequest);
-						LastConnection = System.currentTimeMillis();
-					}
-				}
-			} else if (msg.contains("PONG")) {
-				if (!msg.contains("cho@ppy.sh QUIT")) {
-					LastConnection = System.currentTimeMillis();
-				}
-			}
-			log(msg);
-			if ((System.currentTimeMillis() - LastConnection) > (70 * SECOND)) {
-				if (System.currentTimeMillis()- LastRequested > (5 * SECOND)) {
-					getClient().write("PING " + System.currentTimeMillis());
-					LastMessagePING = "" + System.currentTimeMillis();
-					LastRequested = System.currentTimeMillis();
-					System.out.println((System.currentTimeMillis() - LastConnection));
-				}
-				if ((System.currentTimeMillis() - LastConnection) > (100 * SECOND)) {
-					System.out.println("Connection to bancho Lost. Reconnecting...");
-					break;
+				} else if (msg.startsWith("PING")) {
+					String pingResponse = msg.replace("PING", "PONG");
+					m_client.write(pingResponse);
+				} else if (msg.startsWith("PONG")) {
+					System.out.println("Got pong at " + now + ": " + msg);
+				} else {
+					System.out.println("RECV(" + new Date(now) + "): " + msg);
+					log(msg);
 				}
 			}
 		}
@@ -172,15 +172,19 @@ public class IRCBot {
 	}
 
 	public void reconnect() {
-		m_shouldStop = true;
+		try {
+			if (!m_client.isDisconnected()) {
+				m_client.disconnect();
+			}
+		} catch (IOException e) {
+			// Do nothing.
+		}
+		synchronized (m_client) {
+			m_shouldStop = true;
+		}
 	}
 
 	public void log(String line) {
-		if (line.contains("cho@ppy.sh QUIT :") || (line.contains("PING cho.ppy.sh"))
-				|| (line.contains("PONG cho.ppy.sh"))) {
-			return;
-		}
-
 		Pattern endOfMotd = Pattern.compile(":cho.ppy.sh 376 (.+)");
 		Matcher endofmotdmatch = endOfMotd.matcher(line);
 		try {
@@ -194,7 +198,6 @@ public class IRCBot {
 		} catch (ConcurrentModificationException e) {
 			e.printStackTrace();
 		}
-		System.out.println(line);
 		// :cho.ppy.sh 401 AutoHost #mp_32349656 :No such nick
 		Pattern ChannelNo = Pattern.compile(":cho.ppy.sh 401 (.+) #mp_(.+) :No such nick");
 		Matcher channelded = ChannelNo.matcher(line);
@@ -217,6 +220,11 @@ public class IRCBot {
 			if (target.startsWith("#")) {
 				new ChannelMessageHandler(this).handle(target, user, message);
 			} else {
+//				if (!user.equalsIgnoreCase("BanchoBot")) {
+//					m_client.sendMessage(user, "hi hi o/ " +
+//							"|| I'm currently testing AutoHost, I can't see your messages. " +
+//							"Send me a message on discord if you want to chat: kieve#7362");
+//				}
 				new PrivateMessageHandler(this).handle(user, message);
 			}
 		}
