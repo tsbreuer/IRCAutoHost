@@ -372,6 +372,9 @@ public class ChannelMessageHandler {
 		case "s":
 			handleSkip(lobby, sender);
 			break;
+		case "keys":
+			handleKeys(lobby, sender, message);
+			break;
 		case "info":
 			handleInfo(lobby);
 			break;
@@ -479,6 +482,29 @@ public class ChannelMessageHandler {
 		}
 	}
 
+	private void handleKeys(Lobby lobby, String sender, String message) {
+		if (!lobby.type.equals("3")){
+			m_client.sendMessage(lobby.channel, "This only is available to mania lobbies.");
+			return;
+		}
+		Matcher keys = RegexUtils.matcher("keys ?(\\d+)?", message);
+		if (keys.matches()) {
+			if (!(keys.group(1).equals(""))) {
+				lobby.keys = Integer.valueOf(keys.group(1));
+				if (!lobby.keyLimit){
+					m_client.sendMessage(lobby.channel, "Enabled the key limiter");
+					lobby.keyLimit = true;
+				}
+				m_client.sendMessage(lobby.channel, "The new key mode is "+lobby.keys+"K");
+			} else {
+				if (lobby.keyLimit) {
+					lobby.keyLimit = false;
+					m_client.sendMessage(lobby.channel, "The key limit was disabled");
+				}
+			}
+		}
+	}
+
 	private void handlePrevious(Lobby lobby, String sender) {
 		if (lobby.previousBeatmap == null) {
 			m_client.sendMessage(lobby.channel,
@@ -536,6 +562,7 @@ public class ChannelMessageHandler {
 							sender + " That beatmap does not fit the lobby's current gamemode!");
 					return;
 				}
+
 				Beatmap beatmap = JSONUtils.silentGetBeatmap(obj);
 				beatmap.RequestedBy = m_bot.getId(sender);
 				if (lobby.onlyDifficulty) { // Does the lobby have
@@ -557,10 +584,20 @@ public class ChannelMessageHandler {
 				}
 				if (!lobby.statusTypes.get(beatmap.graveyard)) {
 					m_client.sendMessage(lobby.channel,
-							sender + " That beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
+							sender + " that beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
 					return;
 				}
 
+				if (lobby.type.equals("3")) {
+					if (lobby.keyLimit) {
+						if (beatmap.difficulty_cs != lobby.keys) {
+							m_client.sendMessage(lobby.channel,
+									sender + " that beatmap does not have the key count this lobby uses. Lobby: "
+											+ lobby.keys + "K");
+							return;
+						}
+					}
+				}
 				if (lobby.maxAR != 0) {
 					if (beatmap.difficulty_ar > lobby.maxAR) {
 
@@ -715,6 +752,17 @@ public class ChannelMessageHandler {
 					return;
 				}
 
+				if (lobby.type.equals("3")) {
+					if (lobby.keyLimit) {
+						if (beatmap.difficulty_cs != lobby.keys) {
+							m_client.sendMessage(lobby.channel,
+									sender + " that beatmap does not have the key count this lobby uses. Lobby: "
+											+ lobby.keys + "K");
+							return;
+						}
+					}
+				}
+
 				if (lobby.maxAR != 0) {
 					if (beatmap.difficulty_ar > lobby.maxAR) {
 
@@ -745,7 +793,7 @@ public class ChannelMessageHandler {
 			m_client.sendMessage(sender, "The lobby is currently playing, you cant vote for starting right now.");
 			return;
 		}
-		if (lobby.currentBeatmap != null) {
+		if (lobby.currentBeatmap == null) {
 			m_client.sendMessage(sender, "Please add a map before starting playing!");
 			return;
 		}
@@ -862,6 +910,10 @@ public class ChannelMessageHandler {
 			} else if (modeMatch.group(1).equalsIgnoreCase("taiko")) {
 				lobby.type = "1";
 				m_client.sendMessage(lobby.channel, "This lobby is now a Taiko lobby");
+			}
+			if (!lobby.type.equals("3") && lobby.keyLimit){
+				lobby.keyLimit = false;
+				m_client.sendMessage(lobby.channel, "Since this is not a mania lobby anymore, disabling Key Limiter");
 			}
 		}
 	}

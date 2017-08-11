@@ -36,6 +36,9 @@ public class Lobby {
 
 	public Double maxAR =  0.0;
 
+	public Integer keys = 3;
+	public Boolean keyLimit = false;
+	
 	public Boolean TrueRandom = true;
 
 	public Queue<Beatmap> beatmapQueue = new LinkedList<>();
