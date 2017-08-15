@@ -11,7 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PrivateMessageHandler {
-	private final IRCBot    m_bot;
+	private final IRCBot m_bot;
 	private final IRCClient m_client;
 
 	public PrivateMessageHandler(IRCBot bot) {
@@ -65,12 +65,14 @@ public class PrivateMessageHandler {
 		case "createroom":
 			handleCreateRoom(sender, message, args);
 			break;
+		case "cpr":
+			handleCreatePermanentRoom(sender, message, args);
+			break;
 		case "reconnect":
 			handleReconnect(sender, message);
 			break;
 		default:
-			m_client.sendMessage(sender,
-					"Unrecognized Command. Please check !help, or !commands");
+			m_client.sendMessage(sender, "Unrecognized Command. Please check !help, or !commands");
 		}
 	}
 
@@ -87,15 +89,14 @@ public class PrivateMessageHandler {
 			}
 
 			m_client.sendMessage(sender,
-					"Lobby [" + i + "] || Name: " + lobby.name
-							+ " || Stars: " + lobby.minDifficulty + "* - " + lobby.maxDifficulty
-							+ "* || Slots: [" + lobby.slots.size() + "/16] || "
-							+ password);
+					"Lobby [" + i + "] || Name: " + lobby.name + " || Stars: " + lobby.minDifficulty + "* - "
+							+ lobby.maxDifficulty + "* || Slots: [" + lobby.slots.size() + "/16] || " + password);
 		}
 	}
 
 	private void handleReloadRooms(String sender) {
-		if (!m_bot.isOP(sender)) return;
+		if (!m_bot.isOP(sender))
+			return;
 
 		for (Lobby lobby : m_bot.getLobbies().values()) {
 			lobby.slots.clear();
@@ -105,25 +106,21 @@ public class PrivateMessageHandler {
 	}
 
 	private void handleCommands(String sender) {
-		m_client.sendMessage(sender,
-				"Commands: !createroom [name] | !droplobby | !recreate | !moveme [id/password]");
+		m_client.sendMessage(sender, "Commands: !createroom [name] | !droplobby | !recreate | !moveme [id/password]");
 	}
 
 	private void handleGlobalSay(String sender, String message) {
-		if (!m_bot.isOP(sender)) return;
+		if (!m_bot.isOP(sender))
+			return;
 
-		Matcher globalmatch = RegexUtils.matcher(
-				"globalsay (.+)",
-				message);
+		Matcher globalmatch = RegexUtils.matcher("globalsay (.+)", message);
 		if (globalmatch.matches()) {
 			m_client.sendMessage(sender, "Message sent");
 			for (Lobby lobby : m_bot.getLobbies().values()) {
-				m_client.sendMessage(lobby.channel,
-						"GlobalMessage: " + globalmatch.group(1));
+				m_client.sendMessage(lobby.channel, "GlobalMessage: " + globalmatch.group(1));
 			}
 		} else {
-			m_client.sendMessage(sender,
-					"Syntax error. Please use !globalsay [message]");
+			m_client.sendMessage(sender, "Syntax error. Please use !globalsay [message]");
 		}
 	}
 
@@ -147,8 +144,8 @@ public class PrivateMessageHandler {
 		for (Lobby lobby : deadLobbies) {
 			if (lobby.creatorName.equalsIgnoreCase(sender)) {
 				deadLobbies.remove(lobby);
-				m_bot.createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty,
-						lobby.creatorName, lobby.OPLobby);
+				m_bot.createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName,
+						lobby.OPLobby);
 				return;
 			}
 		}
@@ -159,15 +156,15 @@ public class PrivateMessageHandler {
 		for (Lobby lobby : deadLobbies) {
 			if (lobby.creatorName.equalsIgnoreCase(sender)) {
 				deadLobbies.remove(lobby);
-				m_client.sendMessage(sender,
-						"Lobby dropped. You're now able to create a new one!");
+				m_client.sendMessage(sender, "Lobby dropped. You're now able to create a new one!");
 				return;
 			}
 		}
 	}
 
 	private void handleReconnection(String sender) {
-		if (!m_bot.isOP(sender)) return;
+		if (!m_bot.isOP(sender))
+			return;
 
 		try {
 			m_bot.reconnect();
@@ -177,11 +174,10 @@ public class PrivateMessageHandler {
 	}
 
 	private void handleMoveMe(String sender, String message) {
-		if (!message.contains(" ")) return;
+		if (!message.contains(" "))
+			return;
 
-		Matcher matchMove = RegexUtils.matcher(
-				"moveme (\\d+)",
-				message);
+		Matcher matchMove = RegexUtils.matcher("moveme (\\d+)", message);
 
 		if (matchMove.matches()) {
 			int moveMe = Integer.valueOf(matchMove.group(1));
@@ -208,12 +204,9 @@ public class PrivateMessageHandler {
 				}
 			}
 		} else {
-			Matcher matchPW = RegexUtils.matcher(
-					"moveme (.+)",
-					message);
+			Matcher matchPW = RegexUtils.matcher("moveme (.+)", message);
 			if (!matchPW.matches()) {
-				m_client.sendMessage(sender,
-						"Wrong format, please use !moveme [lobby number provided by help]");
+				m_client.sendMessage(sender, "Wrong format, please use !moveme [lobby number provided by help]");
 			} else {
 				for (Lobby lobby : m_bot.getLobbies().values()) {
 					if (lobby.Password.equals(matchPW.group(1))) {
@@ -233,8 +226,7 @@ public class PrivateMessageHandler {
 
 	private void handleCreateRoom(String sender, String message, String[] args) {
 		if (args.length <= 1) {
-			m_client.sendMessage(sender,
-					"Please include all arguments. Usage: !createroom <name>");
+			m_client.sendMessage(sender, "Please include all arguments. Usage: !createroom <name>");
 			return;
 		}
 		boolean isOP = m_bot.isOP(sender);
@@ -261,31 +253,50 @@ public class PrivateMessageHandler {
 			double mindiff = 4;
 			double maxdiff = 5;
 			m_bot.createNewLobby(roomName, mindiff, maxdiff, sender, isOP);
-			m_client.sendMessage(sender,
-					"Creating room, please wait 1 second and pm me !help to ask for a move");
+			m_client.sendMessage(sender, "Creating room, please wait 1 second and pm me !help to ask for a move");
 		} else {
-			m_client.sendMessage(sender,
-					"Incorrect Syntax. Please use !createroom <name>");
+			m_client.sendMessage(sender, "Incorrect Syntax. Please use !createroom <name>");
+		}
+	}
+
+	private void handleCreatePermanentRoom(String sender, String message, String[] args) {
+		if (args.length <= 1) {
+			m_client.sendMessage(sender, "Please include all arguments. Usage: !cpr <name>");
+			return;
+		}
+		boolean isOP = m_bot.isOP(sender);
+		if (!isOP) {
+			m_client.sendMessage(sender, "You cant use this function.");
+			return;
+		}
+
+		Pattern roomNamePattern = Pattern.compile("cpr (.+)");
+		Matcher roomNameMatcher = roomNamePattern.matcher(message);
+		if (roomNameMatcher.matches()) {
+			// --TODO
+			String roomName = roomNameMatcher.group(1);
+			double mindiff = 4;
+			double maxdiff = 5;
+			m_bot.createNewLobby(roomName, mindiff, maxdiff, sender, isOP,true);
+			m_client.sendMessage(sender, "Creating room, please wait 1 second and pm me !help to ask for a move");
+		} else {
+			m_client.sendMessage(sender, "Incorrect Syntax. Please use !cpr <name>");
 		}
 	}
 
 	private void handleReconnect(String sender, String message) {
 		if (!message.contains(" ")) {
-			m_client.sendMessage(sender,
-					"Please include a lobby id. Usage: !reconnect <mp id>");
+			m_client.sendMessage(sender, "Please include a lobby id. Usage: !reconnect <mp id>");
 			return;
 		}
 
 		boolean isOP = m_bot.isOP(sender);
 
-		Matcher roomIDMatcher = RegexUtils.matcher(
-				"reconnect (.+)",
-				message);
+		Matcher roomIDMatcher = RegexUtils.matcher("reconnect (.+)", message);
 		if (roomIDMatcher.matches()) {
 			m_bot.reconnectLobby(sender, roomIDMatcher.group(1), isOP);
 		} else {
-			m_client.sendMessage(sender,
-					"Incorrect Syntax. Usage: !reconnect <mp id>");
+			m_client.sendMessage(sender, "Incorrect Syntax. Usage: !reconnect <mp id>");
 		}
 	}
 }

@@ -6,6 +6,7 @@ import autohost.Lobby;
 import autohost.irc.IRCClient;
 import autohost.util.Beatmap;
 import autohost.util.JSONUtils;
+import autohost.util.LobbyChecker;
 import autohost.util.RegexUtils;
 import autohost.util.Slot;
 import lt.ekgame.beatmap_analyzer.difficulty.Difficulty;
@@ -52,7 +53,8 @@ public class ChannelMessageHandler {
 		}
 
 		Map<String, Lobby> lobbies = m_bot.getLobbies();
-		if (lobbies.isEmpty()) {
+		Map<String, LobbyChecker> permanentlobbies = m_bot.getpermanentLobbies();
+		if (lobbies.isEmpty() && permanentlobbies.isEmpty()) {
 			return;
 		}
 
@@ -64,7 +66,14 @@ public class ChannelMessageHandler {
 				loadedLobby = lobby;
 			}
 		}
-
+		if (permanentlobbies.containsKey(channel)){
+			Lobby lobby = permanentlobbies.get(channel).lobby;
+			if (lobby.channel.equalsIgnoreCase(channel)) {
+				// Is it an autohosted (by us) channel?
+				loadedLobby = lobby;
+			}
+		}
+		
 		if (loadedLobby != null) {
 			if (sender.equalsIgnoreCase(m_client.getUser())) {
 				return;

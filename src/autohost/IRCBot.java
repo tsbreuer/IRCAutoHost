@@ -49,7 +49,7 @@ public class IRCBot {
 
 	private Map<String, Lobby> m_lobbies = new HashMap<>();
 	private Queue<Lobby> m_deadLobbies = new LinkedList<>();
-
+	private Map<String, LobbyChecker> m_permanentLobbies = new HashMap<>();
 	// Every single IRC client i tried fails, so i decided to make my own with
 	// blackjack & hookers.
 	// Blackjack
@@ -86,7 +86,7 @@ public class IRCBot {
 		connect();
 	}
 
-	public IRCBot(AutoHost autohost, Config config, Map<String, Lobby> Lobbies, Queue<Lobby> LobbyCreation,
+	public IRCBot(AutoHost autohost, Config config, Map<String, Lobby> Lobbies,Map<String, LobbyChecker> permanentLobbies, Queue<Lobby> LobbyCreation,
 			Queue<Lobby> deadLobbies, Map<Integer, String> usernames) throws IOException {
 		// Define all settings. Meh.
 		this.autohost = autohost;
@@ -96,6 +96,7 @@ public class IRCBot {
 		System.out.println("Reconnect lobbies: " + Lobbies.size());
 		this.m_lobbies = Lobbies;
 		m_deadLobbies = deadLobbies;
+		m_permanentLobbies = permanentLobbies;
 		this.usernames = usernames;
 		this.LobbyCreation = LobbyCreation;
 		// Mods definition, ignore
@@ -113,6 +114,10 @@ public class IRCBot {
 
 	public Map<String, Lobby> getLobbies() {
 		return m_lobbies;
+	}
+	
+	public Map<String, LobbyChecker> getpermanentLobbies() {
+		return m_permanentLobbies;
 	}
 
 	public Queue<Lobby> getDeadLobbies() {
@@ -213,6 +218,13 @@ public class IRCBot {
 					removeLobby(lobby);
 				}
 			}
+			if (m_permanentLobbies.containsKey("#mp_" + channelded.group(2))) {
+				Lobby lobby = m_permanentLobbies.get("#mp_" + channelded.group(2)).lobby;
+				m_permanentLobbies.remove("#mp_" + channelded.group(2));
+				m_permanentLobbies.get("#mp_" + channelded.group(2)).stopped = true;
+				createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName, lobby.OPLobby,
+						true);
+			}
 		}
 		Pattern channel = Pattern.compile(":(.+)!cho@ppy.sh PRIVMSG (.+) :(.+)");
 		Matcher channelmatch = channel.matcher(line);
@@ -256,6 +268,29 @@ public class IRCBot {
 		lobby.maxDifficulty = maxdiff;
 		lobby.minDifficulty = mindiff;
 		lobby.OPLobby = isOP;
+		lobby.permanent = false;
+		lobby.creatorName = creator;
+		LobbyCreation.add(lobby);
+		for (int op : m_config.ops) {
+			if (op != getId(creator))
+				lobby.OPs.add(op);
+		}
+		lobby.OPs.add(getId(creator));
+		m_client.sendMessage("BanchoBot", "!mp make " + name);
+	}
+
+	public void createNewLobby(String name, double mindiff, double maxdiff, String creator, Boolean isOP,
+			Boolean Permanent) {
+		Lobby lobby = new Lobby();
+		lobby.slots.clear();
+		lobby.LobbySize = 16;
+		lobby.type = "0";
+		lobby.status = 1;
+		lobby.name = name;
+		lobby.maxDifficulty = maxdiff;
+		lobby.minDifficulty = mindiff;
+		lobby.OPLobby = isOP;
+		lobby.permanent = true;
 		lobby.creatorName = creator;
 		LobbyCreation.add(lobby);
 		for (int op : m_config.ops) {
@@ -300,8 +335,17 @@ public class IRCBot {
 	public void newLobby(String lobbyChannel) {
 		Lobby lobby = LobbyCreation.poll();
 		if (lobby != null) {
+			System.out.println("LobbyCreationPoll good");
 			lobby.channel = lobbyChannel;
-			m_lobbies.put(lobbyChannel, lobby);
+			if (lobby.permanent) {
+				LobbyChecker checker = new LobbyChecker(this, lobby);
+				checker.startTime = System.currentTimeMillis();
+				checker.run();
+				m_permanentLobbies.put(lobbyChannel, checker);
+			} else {
+				m_lobbies.put(lobbyChannel, lobby);
+			}
+
 			m_client.sendMessage(lobbyChannel, "!mp settings");
 			m_client.sendMessage(lobbyChannel, "!mp unlock");
 			m_client.sendMessage(lobbyChannel, "!mp password");
@@ -320,6 +364,7 @@ public class IRCBot {
 			lobby.timer.start();
 
 		} else {
+			System.out.println("LobbyCreationPoll null");
 			lobby = new Lobby(lobbyChannel);
 			lobby.channel = lobbyChannel;
 			m_lobbies.put(lobbyChannel, lobby);
@@ -362,9 +407,17 @@ public class IRCBot {
 
 	public void removeLobby(Lobby lobby) {
 		synchronized (m_lobbies) {
-			m_deadLobbies.add(m_lobbies.get(lobby.channel));
-			m_lobbies.remove(lobby.channel);
-			lobby.timer.stopTimer();
+			if (m_lobbies.containsKey(lobby.channel)) {
+				m_deadLobbies.add(m_lobbies.get(lobby.channel));
+				m_lobbies.remove(lobby.channel);
+				lobby.timer.stopTimer();
+			}
+		}
+		synchronized (m_permanentLobbies) {
+			if (m_permanentLobbies.containsKey(lobby.channel)) {
+				m_permanentLobbies.get(lobby.channel).stopped = true;
+				m_permanentLobbies.remove(lobby.channel);
+			}
 		}
 	}
 
@@ -1053,12 +1106,12 @@ public class IRCBot {
 				}
 			}
 		}
-		if (lobby.type.equals("3")){
-			m_client.sendMessage(lobby.channel, "Up next: [https://osu.ppy.sh/b/" + next.beatmap_id + " " + next.artist
-					+ " - " + next.title + "] [" + round(next.difficulty, 2) + "*] || Keys: "+next.difficulty_cs+"K");
+		if (lobby.type.equals("3")) {
+			m_client.sendMessage(lobby.channel,
+					"Up next: [https://osu.ppy.sh/b/" + next.beatmap_id + " " + next.artist + " - " + next.title + "] ["
+							+ round(next.difficulty, 2) + "*] || Keys: " + next.difficulty_cs + "K");
 
-		}
-		else {
+		} else {
 			m_client.sendMessage(lobby.channel, "Up next: [https://osu.ppy.sh/b/" + next.beatmap_id + " " + next.artist
 					+ " - " + next.title + "] [" + round(next.difficulty, 2) + "*]");
 

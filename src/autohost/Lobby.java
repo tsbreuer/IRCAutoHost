@@ -103,6 +103,7 @@ public class Lobby {
 	public Double minDifficulty = (double) 4;
 	public Double maxDifficulty = (double) 5;
 	public Beatmap previousBeatmap;
+	public boolean permanent = false;
 
 
 	public Lobby(String channel) {
