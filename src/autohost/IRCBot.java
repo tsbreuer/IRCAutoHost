@@ -346,7 +346,7 @@ public class IRCBot {
 			if (lobby.permanent) {
 				LobbyChecker checker = new LobbyChecker(this, lobby);
 				checker.startTime = System.currentTimeMillis();
-				checker.run();
+				checker.start();
 				m_permanentLobbies.put(lobbyChannel, checker);
 				System.out.println("Permanent lobby");
 			} else {
