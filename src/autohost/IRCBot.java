@@ -77,7 +77,6 @@ public class IRCBot {
 			m_writer.write("Bot started. This is a error log file");
 			m_writer.flush();
 		} catch (FileNotFoundException | UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		m_config = config;
@@ -224,8 +223,8 @@ public class IRCBot {
 			}
 			if (m_permanentLobbies.containsKey("#mp_" + channelded.group(2))) {
 				Lobby lobby = m_permanentLobbies.get("#mp_" + channelded.group(2)).lobby;
-				m_permanentLobbies.remove("#mp_" + channelded.group(2));
 				m_permanentLobbies.get("#mp_" + channelded.group(2)).stopped = true;
+				m_permanentLobbies.remove("#mp_" + channelded.group(2));
 				createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName, lobby.OPLobby,
 						true);
 			}
@@ -259,6 +258,28 @@ public class IRCBot {
 				String lobbyChannel = matcher.group(2);
 				newLobby(lobbyChannel);
 				System.out.println("New lobby: "+lobbyChannel);
+			}
+		}
+		
+		// :AutoHost!cho@ppy.sh PART :#mp_35457515
+		Pattern part = Pattern.compile(":(.+)!cho@ppy.sh PART :(.+)");
+		Matcher partM = part.matcher(line);
+		if (partM.matches()) {
+			if (partM.group(1).equalsIgnoreCase(m_client.getUser())) {	
+				if (m_lobbies.containsKey("#mp_" + partM.group(2))) {
+					Lobby lobby = m_lobbies.get("#mp_" + partM.group(2));
+					if (lobby.channel.equalsIgnoreCase("#mp_" + partM.group(2))) {
+						lobby.timer.stopTimer();
+						removeLobby(lobby);
+					}
+				}
+				if (m_permanentLobbies.containsKey("#mp_" + partM.group(2))) {
+					Lobby lobby = m_permanentLobbies.get("#mp_" + partM.group(2)).lobby;
+					m_permanentLobbies.get("#mp_" + partM.group(2)).stopped = true;
+					m_permanentLobbies.remove("#mp_" + partM.group(2));
+					createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName, lobby.OPLobby,
+							true);
+				}
 			}
 		}
 	}
