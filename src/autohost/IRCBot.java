@@ -176,6 +176,8 @@ public class IRCBot {
 				} else {
 					System.out.println("RECV(" + new Date(now) + "): " + msg);
 					log(msg);
+					m_writer.println(msg);
+					m_writer.flush();
 				}
 			}
 		}
@@ -1289,6 +1291,8 @@ public class IRCBot {
 				*/
 			} catch (JSONException | URISyntaxException | IOException e) {
 				e.printStackTrace();
+				e.printStackTrace(m_writer);
+				m_writer.flush();
 			}
 		}
 
