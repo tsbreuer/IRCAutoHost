@@ -24,6 +24,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.google.common.collect.HashBiMap;
+
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -31,6 +33,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -58,7 +61,7 @@ public class IRCBot {
 
 	public AutoHost autohost;
 	// TODO: This should be a BiMap
-	public Map<Integer, String> usernames = new HashMap<>();
+	public HashBiMap<Integer, String> usernames = HashBiMap.create();
 
 	// This is the reconnection data, just info i store for checking if Bancho
 	// went RIP
@@ -87,7 +90,7 @@ public class IRCBot {
 	}
 
 	public IRCBot(AutoHost autohost, Config config, Map<String, Lobby> Lobbies,Map<String, LobbyChecker> permanentLobbies, Queue<Lobby> LobbyCreation,
-			Queue<Lobby> deadLobbies, Map<Integer, String> usernames) throws IOException {
+			Queue<Lobby> deadLobbies, HashBiMap<Integer, String> usernames) throws IOException {
 		// Define all settings. Meh.
 		this.autohost = autohost;
 		m_config = config;
@@ -254,6 +257,7 @@ public class IRCBot {
 			if (matcher.group(1).equalsIgnoreCase(m_client.getUser())) {
 				String lobbyChannel = matcher.group(2);
 				newLobby(lobbyChannel);
+				System.out.println("New lobby: "+lobbyChannel);
 			}
 		}
 	}
@@ -270,12 +274,13 @@ public class IRCBot {
 		lobby.OPLobby = isOP;
 		lobby.permanent = false;
 		lobby.creatorName = creator;
+		int creatorID = getId(creator);
 		LobbyCreation.add(lobby);
 		for (int op : m_config.ops) {
-			if (op != getId(creator))
+			if (op != creatorID)
 				lobby.OPs.add(op);
 		}
-		lobby.OPs.add(getId(creator));
+		lobby.OPs.add(creatorID);
 		m_client.sendMessage("BanchoBot", "!mp make " + name);
 	}
 
@@ -293,11 +298,12 @@ public class IRCBot {
 		lobby.permanent = true;
 		lobby.creatorName = creator;
 		LobbyCreation.add(lobby);
+		int creatorID = getId(creator);
 		for (int op : m_config.ops) {
-			if (op != getId(creator))
+			if (op != creatorID)
 				lobby.OPs.add(op);
 		}
-		lobby.OPs.add(getId(creator));
+		lobby.OPs.add(creatorID);
 		m_client.sendMessage("BanchoBot", "!mp make " + name);
 	}
 
@@ -321,11 +327,12 @@ public class IRCBot {
 		lobby.creatorName = creator;
 		lobby.rejoined = true;
 		LobbyCreation.add(lobby);
+		int creatorID = getId(creator);
 		for (int op : m_config.ops) {
-			if (op != getId(creator))
+			if (op != creatorID)
 				lobby.OPs.add(op);
 		}
-		lobby.OPs.add(getId(creator));
+		lobby.OPs.add(creatorID);
 		m_client.write("JOIN #mp_" + channel);
 		m_client.sendMessage("#mp_" + channel, "Bot reconnect requested to this lobby by " + creator);
 		m_client.sendMessage("#mp_" + channel,
@@ -335,15 +342,17 @@ public class IRCBot {
 	public void newLobby(String lobbyChannel) {
 		Lobby lobby = LobbyCreation.poll();
 		if (lobby != null) {
-			System.out.println("LobbyCreationPoll good");
+			System.out.println("LobbyCreationPoll good "+lobbyChannel);
 			lobby.channel = lobbyChannel;
 			if (lobby.permanent) {
 				LobbyChecker checker = new LobbyChecker(this, lobby);
 				checker.startTime = System.currentTimeMillis();
 				checker.run();
 				m_permanentLobbies.put(lobbyChannel, checker);
+				System.out.println("Permanent lobby");
 			} else {
 				m_lobbies.put(lobbyChannel, lobby);
+				System.out.println("Common lobby");
 			}
 
 			m_client.sendMessage(lobbyChannel, "!mp settings");
@@ -437,6 +446,7 @@ public class IRCBot {
 					m_client.sendMessage(lobby.channel, Sender + ": Beatmap not found.");
 					return;
 				}
+				int senderID = getId(Sender);
 				Request request = new Request();
 				// lobby.requests
 				System.out.println("Array has #objects: " + array.length());
@@ -450,7 +460,7 @@ public class IRCBot {
 						return;
 					}
 					Beatmap beatmap = JSONUtils.silentGetBeatmap(obj);
-					beatmap.RequestedBy = getId(Sender);
+					beatmap.RequestedBy = senderID;
 					if (lobby.onlyDifficulty) { // Does the lobby have
 												// locked difficulty limits?
 						if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) {
@@ -1223,8 +1233,9 @@ public class IRCBot {
 	}
 
 	public Boolean isOP(String user) {
+		int userID = getId(user);
 		for (int ID : m_config.ops) {
-			if (ID == (getId(user))) {
+			if (ID == userID) {
 				return true;
 			}
 		}
@@ -1232,31 +1243,60 @@ public class IRCBot {
 	}
 
 	public int getId(String name) {
+		if (name.equalsIgnoreCase("BanchoBot"))
+			return 3;
 		int id = 0;
-		for (Map.Entry<Integer, String> entry : usernames.entrySet()) {
-			if (entry.getValue().equals(name)) {
-				id = entry.getKey();
-			}
+		if (usernames.containsValue(name))
+		{
+			id = usernames.inverse().get(name);
 		}
 		if (id == 0) {
 			try {
-				RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000)
-						.setConnectTimeout(10000).setConnectionRequestTimeout(10000).build();
+				RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
+						.setConnectionRequestTimeout(10000).build();
 				HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
-				URI uri = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/api/get_user")
-						.setParameter("k", m_config.apikey).setParameter("u", "" + name).setParameter("type", "string")
-						.build();
+				URIBuilder uriBuilder = new URIBuilder()
+						.setScheme("http")
+						.setHost("osu.ppy.sh")
+						.setPath("/api/get_user")
+						.setParameter("k", m_config.apikey)
+						.setParameter("u", "" + name)
+						.setParameter("type", "string");
+				URI uri = uriBuilder.build();
 				HttpGet request = new HttpGet(uri);
 				HttpResponse response = httpClient.execute(request);
 				InputStream content = response.getEntity().getContent();
 				String stringContent = IOUtils.toString(content, "UTF-8");
 				JSONArray array = new JSONArray(stringContent);
 				id = array.getJSONObject(0).getInt("user_id");
+				/*
+				RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000)
+						.setConnectTimeout(10000).setConnectionRequestTimeout(10000).build();
+				HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
+				URI uri = new URIBuilder()
+				.setScheme("http")
+				.setHost("osu.ppy.sh")
+				.setPath("/api/get_user")
+				.setParameter("k", m_config.apikey)
+				.setParameter("u", "" + name)
+				.setParameter("type", "string")
+				.build();
+				HttpGet request = new HttpGet(uri);
+				HttpResponse response = httpClient.execute(request);
+				InputStream content = response.getEntity().getContent();
+				String stringContent = IOUtils.toString(content, "UTF-8");
+				JSONArray array = new JSONArray(stringContent);
+				id = array.getJSONObject(0).getInt("user_id");
+				*/
 			} catch (JSONException | URISyntaxException | IOException e) {
 				e.printStackTrace();
 			}
 		}
 
+		if (id != 0){
+		usernames.put(id, name);
+		System.out.println("New user: |"+name+"|ID: |"+id+"|");
+		}
 		return id;
 	}
 
@@ -1287,8 +1327,9 @@ public class IRCBot {
 	}
 
 	public boolean hasAlreadyRequested(Lobby lobby, String sender) {
+		int senderID = getId(sender);
 		for (Beatmap beatmap : lobby.beatmapQueue) {
-			if (beatmap.RequestedBy == getId(sender)) {
+			if (beatmap.RequestedBy == senderID) {
 				return true;
 			}
 		}
