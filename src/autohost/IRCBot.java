@@ -60,7 +60,6 @@ public class IRCBot {
 	public Queue<Lobby> LobbyCreation = new LinkedList<>();
 
 	public AutoHost autohost;
-	// TODO: This should be a BiMap
 	public HashBiMap<Integer, String> usernames = HashBiMap.create();
 
 	// This is the reconnection data, just info i store for checking if Bancho
