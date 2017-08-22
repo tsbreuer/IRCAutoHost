@@ -393,6 +393,9 @@ public class IRCBot {
 				m_client.sendMessage(lobbyChannel, "!mp add " + lobby.creatorName);
 			lobby.timer = new TimerThread(this, lobby);
 			lobby.timer.start();
+			if (lobby.permanent){
+				nextbeatmap(lobby);
+			}
 
 		} else {
 			System.out.println("LobbyCreationPoll null");
@@ -661,6 +664,7 @@ public class IRCBot {
 		}
 		if (players == 0) {
 			lobby.timer.resetTimer();
+			nextbeatmap(lobby);
 			return;
 		}
 
@@ -750,7 +754,7 @@ public class IRCBot {
 						modsString = "NOMOD";
 					m_client.sendMessage(lobby.channel,
 							user + " || Rank: " + rank + " || Mods: " + modsString + " || Hits: " + c300s + "/" + c100s
-									+ "/" + c50s + "/" + miss + " || Combo: (" + ppcalc.getMaxCombo() + "/" + maxcombo
+									+ "/" + c50s + "/" + miss + " || Combo: (" + maxcombo + "/" + ppcalc.getMaxCombo()
 									+ ") || " + String.format("%.02f", +acc * 100) + "% || PP: "
 									+ String.format("%.02f", pp) + " ");
 				}
