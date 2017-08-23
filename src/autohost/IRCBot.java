@@ -87,8 +87,9 @@ public class IRCBot {
 		connect();
 	}
 
-	public IRCBot(AutoHost autohost, Config config, Map<String, Lobby> Lobbies,Map<String, LobbyChecker> permanentLobbies, Queue<Lobby> LobbyCreation,
-			Queue<Lobby> deadLobbies, HashBiMap<Integer, String> usernames) throws IOException {
+	public IRCBot(AutoHost autohost, Config config, Map<String, Lobby> Lobbies,
+			Map<String, LobbyChecker> permanentLobbies, Queue<Lobby> LobbyCreation, Queue<Lobby> deadLobbies,
+			HashBiMap<Integer, String> usernames) throws IOException {
 		// Define all settings. Meh.
 		this.autohost = autohost;
 		m_config = config;
@@ -116,7 +117,7 @@ public class IRCBot {
 	public Map<String, Lobby> getLobbies() {
 		return m_lobbies;
 	}
-	
+
 	public Map<String, LobbyChecker> getpermanentLobbies() {
 		return m_permanentLobbies;
 	}
@@ -211,6 +212,7 @@ public class IRCBot {
 			e.printStackTrace();
 		}
 		// :cho.ppy.sh 401 AutoHost #mp_32349656 :No such nick
+		// :cho.ppy.sh 401 AutoHost #mp_35465451 :No such nick
 		Pattern ChannelNo = Pattern.compile(":cho.ppy.sh 401 (.+) #mp_(.+) :No such nick");
 		Matcher channelded = ChannelNo.matcher(line);
 		if (channelded.matches()) {
@@ -224,6 +226,7 @@ public class IRCBot {
 			if (m_permanentLobbies.containsKey("#mp_" + channelded.group(2))) {
 				Lobby lobby = m_permanentLobbies.get("#mp_" + channelded.group(2)).lobby;
 				m_permanentLobbies.get("#mp_" + channelded.group(2)).stopped = true;
+				m_permanentLobbies.get("#mp_" + channelded.group(2)).lobby.timer.stopTimer();
 				m_permanentLobbies.remove("#mp_" + channelded.group(2));
 				createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName, lobby.OPLobby,
 						true);
@@ -257,15 +260,15 @@ public class IRCBot {
 			if (matcher.group(1).equalsIgnoreCase(m_client.getUser())) {
 				String lobbyChannel = matcher.group(2);
 				newLobby(lobbyChannel);
-				System.out.println("New lobby: "+lobbyChannel);
+				System.out.println("New lobby: " + lobbyChannel);
 			}
 		}
-		
+
 		// :AutoHost!cho@ppy.sh PART :#mp_35457515
 		Pattern part = Pattern.compile(":(.+)!cho@ppy.sh PART :(.+)");
 		Matcher partM = part.matcher(line);
 		if (partM.matches()) {
-			if (partM.group(1).equalsIgnoreCase(m_client.getUser())) {	
+			if (partM.group(1).equalsIgnoreCase(m_client.getUser())) {
 				if (m_lobbies.containsKey("#mp_" + partM.group(2))) {
 					Lobby lobby = m_lobbies.get("#mp_" + partM.group(2));
 					if (lobby.channel.equalsIgnoreCase("#mp_" + partM.group(2))) {
@@ -277,8 +280,8 @@ public class IRCBot {
 					Lobby lobby = m_permanentLobbies.get("#mp_" + partM.group(2)).lobby;
 					m_permanentLobbies.get("#mp_" + partM.group(2)).stopped = true;
 					m_permanentLobbies.remove("#mp_" + partM.group(2));
-					createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName, lobby.OPLobby,
-							true);
+					createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName,
+							lobby.OPLobby, true);
 				}
 			}
 		}
@@ -364,7 +367,7 @@ public class IRCBot {
 	public void newLobby(String lobbyChannel) {
 		Lobby lobby = LobbyCreation.poll();
 		if (lobby != null) {
-			System.out.println("LobbyCreationPoll good "+lobbyChannel);
+			System.out.println("LobbyCreationPoll good " + lobbyChannel);
 			lobby.channel = lobbyChannel;
 			if (lobby.permanent) {
 				LobbyChecker checker = new LobbyChecker(this, lobby);
@@ -393,7 +396,7 @@ public class IRCBot {
 				m_client.sendMessage(lobbyChannel, "!mp add " + lobby.creatorName);
 			lobby.timer = new TimerThread(this, lobby);
 			lobby.timer.start();
-			if (lobby.permanent){
+			if (lobby.permanent) {
 				nextbeatmap(lobby);
 			}
 
@@ -422,17 +425,17 @@ public class IRCBot {
 	}
 
 	public void addAFK(Lobby lobby, String player) {
-		// We don't want this
-		/*
-		 * if (lobby.afk.containsKey(player)) { lobby.afk.put(player,
-		 * lobby.afk.get(player) + 1); if (lobby.afk.get(player) >= 3) {
-		 * m_client.sendMessage(lobby.channel, "!mp kick " + player);
-		 * m_client.sendMessage(lobby.channel, player +
-		 * " was kicked for being AFK for 5 rounds.");
-		 * m_client.sendMessage(player,
-		 * "You were kicked from the lobby for being AFK."); } } else {
-		 * lobby.afk.put(player, 1); }
-		 */
+		if (lobby.afk.containsKey(player)) {
+			lobby.afk.put(player, lobby.afk.get(player) + 1);
+			if (lobby.afk.get(player) >= 3) {
+				m_client.sendMessage(lobby.channel, "!mp kick " + player);
+				m_client.sendMessage(lobby.channel, player + " was kicked for being AFK for 5 rounds.");
+				m_client.sendMessage(player, "You were kicked from the lobby for being AFK.");
+			}
+		} else {
+			lobby.afk.put(player, 1);
+		}
+
 	}
 
 	public void removeAFK(Lobby lobby, String player) {
@@ -916,6 +919,7 @@ public class IRCBot {
 			});
 		} catch (Exception e) {
 			e.printStackTrace();
+			nextbeatmap(lobby);
 		}
 	}
 
@@ -1272,21 +1276,16 @@ public class IRCBot {
 		if (name.equalsIgnoreCase("BanchoBot"))
 			return 3;
 		int id = 0;
-		if (usernames.containsValue(name))
-		{
+		if (usernames.containsValue(name)) {
 			id = usernames.inverse().get(name);
 		}
 		if (id == 0) {
 			try {
-				RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
-						.setConnectionRequestTimeout(10000).build();
+				RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000)
+						.setConnectTimeout(10000).setConnectionRequestTimeout(10000).build();
 				HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
-				URIBuilder uriBuilder = new URIBuilder()
-						.setScheme("http")
-						.setHost("osu.ppy.sh")
-						.setPath("/api/get_user")
-						.setParameter("k", m_config.apikey)
-						.setParameter("u", "" + name)
+				URIBuilder uriBuilder = new URIBuilder().setScheme("http").setHost("osu.ppy.sh")
+						.setPath("/api/get_user").setParameter("k", m_config.apikey).setParameter("u", "" + name)
 						.setParameter("type", "string");
 				URI uri = uriBuilder.build();
 				HttpGet request = new HttpGet(uri);
@@ -1296,24 +1295,22 @@ public class IRCBot {
 				JSONArray array = new JSONArray(stringContent);
 				id = array.getJSONObject(0).getInt("user_id");
 				/*
-				RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000)
-						.setConnectTimeout(10000).setConnectionRequestTimeout(10000).build();
-				HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
-				URI uri = new URIBuilder()
-				.setScheme("http")
-				.setHost("osu.ppy.sh")
-				.setPath("/api/get_user")
-				.setParameter("k", m_config.apikey)
-				.setParameter("u", "" + name)
-				.setParameter("type", "string")
-				.build();
-				HttpGet request = new HttpGet(uri);
-				HttpResponse response = httpClient.execute(request);
-				InputStream content = response.getEntity().getContent();
-				String stringContent = IOUtils.toString(content, "UTF-8");
-				JSONArray array = new JSONArray(stringContent);
-				id = array.getJSONObject(0).getInt("user_id");
-				*/
+				 * RequestConfig defaultRequestConfig =
+				 * RequestConfig.custom().setSocketTimeout(10000)
+				 * .setConnectTimeout(10000).setConnectionRequestTimeout(10000).
+				 * build(); HttpClient httpClient =
+				 * HttpClients.custom().setDefaultRequestConfig(
+				 * defaultRequestConfig).build(); URI uri = new URIBuilder()
+				 * .setScheme("http") .setHost("osu.ppy.sh")
+				 * .setPath("/api/get_user") .setParameter("k", m_config.apikey)
+				 * .setParameter("u", "" + name) .setParameter("type", "string")
+				 * .build(); HttpGet request = new HttpGet(uri); HttpResponse
+				 * response = httpClient.execute(request); InputStream content =
+				 * response.getEntity().getContent(); String stringContent =
+				 * IOUtils.toString(content, "UTF-8"); JSONArray array = new
+				 * JSONArray(stringContent); id =
+				 * array.getJSONObject(0).getInt("user_id");
+				 */
 			} catch (JSONException | URISyntaxException | IOException e) {
 				e.printStackTrace();
 				e.printStackTrace(m_writer);
@@ -1321,9 +1318,9 @@ public class IRCBot {
 			}
 		}
 
-		if (id != 0){
-		usernames.put(id, name);
-		System.out.println("New user: |"+name+"|ID: |"+id+"|");
+		if (id != 0) {
+			usernames.put(id, name);
+			System.out.println("New user: |" + name + "|ID: |" + id + "|");
 		}
 		return id;
 	}

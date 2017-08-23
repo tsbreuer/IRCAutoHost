@@ -66,14 +66,14 @@ public class ChannelMessageHandler {
 				loadedLobby = lobby;
 			}
 		}
-		if (permanentlobbies.containsKey(channel)){
+		if (permanentlobbies.containsKey(channel)) {
 			Lobby lobby = permanentlobbies.get(channel).lobby;
 			if (lobby.channel.equalsIgnoreCase(channel)) {
 				// Is it an autohosted (by us) channel?
 				loadedLobby = lobby;
 			}
 		}
-		
+
 		if (loadedLobby != null) {
 			if (sender.equalsIgnoreCase(m_client.getUser())) {
 				return;
@@ -161,31 +161,47 @@ public class ChannelMessageHandler {
 		// Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX [Hidden]
 		// Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX [HardRock]
 		// :Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX
+		// Slot 5 Ready https://osu.ppy.sh/u/10494710 Fimwick [Hidden, HardRock]
 		// TODO: Document these groups.
 		// Have to manually parse the regex to figure out wtf group 5 is.
 		Matcher sM = RegexUtils.matcher(
-				"^Slot (\\d+)(\\s+){1,2}(.+) https://osu.ppy.sh/u/(\\d+) (.+?)(?=( *$| +(\\[)([^\\[\\]]+)?(\\])?)$)",
+				"^Slot (\\d+)(\\s+){1,2}(.+) https://osu\\.ppy\\.sh/u/(\\d+) (.+?)(?=( *$| +(\\[)([^\\[\\]]+)?(\\])?)$)",
 				message);
 		if (sM.matches()) {
 			int slotN = Integer.valueOf(sM.group(1));
-			if (lobby.slots.containsKey(slotN)) {
-				Slot slotM = lobby.slots.get(slotN);
-				slotM.status = sM.group(3);
-				slotM.id = slotN;
-				slotM.playerid = Integer.valueOf(sM.group(4));
-				slotM.name = sM.group(5).trim();
-				m_bot.m_writer.println("Slot movmenet: '" + sM.group(5).trim() + "'");
-				m_bot.m_writer.flush();
-				lobby.slots.replace(slotN, slotM);
-			} else {
-				Slot slotM = new Slot();
-				slotM.status = sM.group(3);
-				slotM.id = slotN;
-				slotM.playerid = Integer.valueOf(sM.group(4));
-				slotM.name = sM.group(5).trim();
-				m_bot.m_writer.println("Slot movmenet: '" + sM.group(5).trim() + "'");
-				m_bot.m_writer.flush();
-				lobby.slots.put(slotN, slotM);
+			Matcher nameFix = RegexUtils.matcher("(.+?(\\h*\\[(.+)\\])|.+)", sM.group(5).trim());
+			if (nameFix.matches()) {
+				if (lobby.slots.containsKey(slotN)) {
+					Slot slotM = lobby.slots.get(slotN);
+					slotM.status = sM.group(3);
+					slotM.id = slotN;
+					slotM.playerid = Integer.valueOf(sM.group(4));
+					if (nameFix.group(5) != null) {
+						slotM.name = nameFix.group(5).trim();
+						m_bot.m_writer.println("Slot movement: '" + nameFix.group(5).trim() + "'");
+
+					} else {
+						slotM.name = nameFix.group(2).trim();
+						m_bot.m_writer.println("Slot movement: '" + nameFix.group(2).trim() + "'");
+					}
+					m_bot.m_writer.flush();
+					lobby.slots.replace(slotN, slotM);
+				} else {
+					Slot slotM = new Slot();
+					slotM.status = sM.group(3);
+					slotM.id = slotN;
+					slotM.playerid = Integer.valueOf(sM.group(4));
+					if (nameFix.group(5) != null) {
+						slotM.name = nameFix.group(5).trim();
+						m_bot.m_writer.println("Slot movement: '" + nameFix.group(5).trim() + "'");
+
+					} else {
+						slotM.name = nameFix.group(2).trim();
+						m_bot.m_writer.println("Slot movement: '" + nameFix.group(2).trim() + "'");
+					}
+					m_bot.m_writer.flush();
+					lobby.slots.put(slotN, slotM);
+				}
 			}
 			return;
 		}
@@ -492,7 +508,7 @@ public class ChannelMessageHandler {
 	}
 
 	private void handleKeys(Lobby lobby, String sender, String message) {
-		if (!lobby.type.equals("3")){
+		if (!lobby.type.equals("3")) {
 			m_client.sendMessage(lobby.channel, "This only is available to mania lobbies.");
 			return;
 		}
@@ -500,11 +516,11 @@ public class ChannelMessageHandler {
 		if (keys.matches()) {
 			if (!(keys.group(1).equals(""))) {
 				lobby.keys = Integer.valueOf(keys.group(1));
-				if (!lobby.keyLimit){
+				if (!lobby.keyLimit) {
 					m_client.sendMessage(lobby.channel, "Enabled the key limiter");
 					lobby.keyLimit = true;
 				}
-				m_client.sendMessage(lobby.channel, "The new key mode is "+lobby.keys+"K");
+				m_client.sendMessage(lobby.channel, "The new key mode is " + lobby.keys + "K");
 			} else {
 				if (lobby.keyLimit) {
 					lobby.keyLimit = false;
@@ -920,7 +936,7 @@ public class ChannelMessageHandler {
 				lobby.type = "1";
 				m_client.sendMessage(lobby.channel, "This lobby is now a Taiko lobby");
 			}
-			if (!lobby.type.equals("3") && lobby.keyLimit){
+			if (!lobby.type.equals("3") && lobby.keyLimit) {
 				lobby.keyLimit = false;
 				m_client.sendMessage(lobby.channel, "Since this is not a mania lobby anymore, disabling Key Limiter");
 			}
