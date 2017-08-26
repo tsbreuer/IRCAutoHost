@@ -33,7 +33,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -45,6 +44,10 @@ import static autohost.util.MathUtils.round;
 import static autohost.util.TimeUtils.SECOND;
 
 public class IRCBot {
+	// This is to have AutoHost ignore commands from other people while testing.
+	// Set this to your name to have AutoHost only accept your commands.
+	private static final String LOCK_NAME = null;
+
 	public PrintWriter m_writer;
 	private final IRCClient m_client;
 	private Config m_config;
@@ -175,7 +178,12 @@ public class IRCBot {
 					System.out.println("Got pong at " + now + ": " + msg);
 				} else {
 					System.out.println("RECV(" + new Date(now) + "): " + msg);
-					log(msg);
+					try {
+						log(msg);
+					} catch (Exception e) {
+						System.err.println("Unhandled exception thrown!");
+						e.printStackTrace();
+					}
 					m_writer.println(msg);
 					m_writer.flush();
 				}
@@ -242,14 +250,15 @@ public class IRCBot {
 			if (target.startsWith("#")) {
 				new ChannelMessageHandler(this).handle(target, user, message);
 			} else {
-				// if (!user.equalsIgnoreCase("BanchoBot")) {
-				// m_client.sendMessage(user, "hi hi o/ " +
-				// "|| I'm currently testing AutoHost, I can't see your
-				// messages. " +
-				// "Send me a message on discord if you want to chat:
-				// kieve#7362");
-				// }
-				new PrivateMessageHandler(this).handle(user, message);
+				 if (LOCK_NAME != null
+						 && !user.equalsIgnoreCase(LOCK_NAME)
+						 && !user.equalsIgnoreCase("BanchoBot"))
+				 {
+					 m_client.sendMessage(user, "kieve is currently testing / fixing AutoHost. "
+							 + "He'll announce in the [https://discord.gg/UDabf2y AutoHost Discord] when he's done");
+				 } else {
+					 new PrivateMessageHandler(this).handle(user, message);
+				 }
 			}
 		}
 
@@ -1316,11 +1325,11 @@ public class IRCBot {
 				e.printStackTrace(m_writer);
 				m_writer.flush();
 			}
-		}
 
-		if (id != 0) {
-			usernames.put(id, name);
-			System.out.println("New user: |" + name + "|ID: |" + id + "|");
+			if (id != 0) {
+				usernames.put(id, name);
+				System.out.println("New user: |" + name + "|ID: |" + id + "|");
+			}
 		}
 		return id;
 	}

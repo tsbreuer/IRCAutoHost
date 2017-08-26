@@ -169,39 +169,34 @@ public class ChannelMessageHandler {
 				message);
 		if (sM.matches()) {
 			int slotN = Integer.valueOf(sM.group(1));
-			Matcher nameFix = RegexUtils.matcher("(.+?(\\h*\\[(.+)\\])|.+)", sM.group(5).trim());
-			if (nameFix.matches()) {
-				if (lobby.slots.containsKey(slotN)) {
-					Slot slotM = lobby.slots.get(slotN);
-					slotM.status = sM.group(3);
-					slotM.id = slotN;
-					slotM.playerid = Integer.valueOf(sM.group(4));
-					if (nameFix.group(5) != null) {
-						slotM.name = nameFix.group(5).trim();
-						m_bot.m_writer.println("Slot movement: '" + nameFix.group(5).trim() + "'");
-
-					} else {
-						slotM.name = nameFix.group(2).trim();
-						m_bot.m_writer.println("Slot movement: '" + nameFix.group(2).trim() + "'");
-					}
-					m_bot.m_writer.flush();
-					lobby.slots.replace(slotN, slotM);
-				} else {
-					Slot slotM = new Slot();
-					slotM.status = sM.group(3);
-					slotM.id = slotN;
-					slotM.playerid = Integer.valueOf(sM.group(4));
-					if (nameFix.group(5) != null) {
-						slotM.name = nameFix.group(5).trim();
-						m_bot.m_writer.println("Slot movement: '" + nameFix.group(5).trim() + "'");
-
-					} else {
-						slotM.name = nameFix.group(2).trim();
-						m_bot.m_writer.println("Slot movement: '" + nameFix.group(2).trim() + "'");
-					}
-					m_bot.m_writer.flush();
-					lobby.slots.put(slotN, slotM);
-				}
+			Matcher nameFix = RegexUtils.matcher("((.+)?(\\h*\\[(.+)\\])|.+)", sM.group(5).trim());
+			String name;
+			if (!nameFix.matches()) {
+				name = sM.group(5).trim();
+			} else {
+				name = nameFix.group(0);
+			}
+			if (name == null) {
+				return;
+			}
+			if (lobby.slots.containsKey(slotN)) {
+				Slot slotM = lobby.slots.get(slotN);
+				slotM.status = sM.group(3);
+				slotM.id = slotN;
+				slotM.playerid = Integer.valueOf(sM.group(4));
+				slotM.name = name;
+				m_bot.m_writer.println("Slot movement: '" + name + "'");
+				m_bot.m_writer.flush();
+				lobby.slots.replace(slotN, slotM);
+			} else {
+				Slot slotM = new Slot();
+				slotM.status = sM.group(3);
+				slotM.id = slotN;
+				slotM.playerid = Integer.valueOf(sM.group(4));
+				slotM.name = name;
+				m_bot.m_writer.println("Slot movement: '" + name + "'");
+				m_bot.m_writer.flush();
+				lobby.slots.put(slotN, slotM);
 			}
 			return;
 		}
