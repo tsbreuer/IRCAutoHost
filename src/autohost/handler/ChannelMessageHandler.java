@@ -179,6 +179,7 @@ public class ChannelMessageHandler {
 			if (name == null) {
 				return;
 			}
+			name = name.trim();
 			if (lobby.slots.containsKey(slotN)) {
 				Slot slotM = lobby.slots.get(slotN);
 				slotM.status = sM.group(3);
