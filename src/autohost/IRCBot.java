@@ -393,7 +393,7 @@ public class IRCBot {
 				}
 			}
 			if (!inside)
-				m_client.sendMessage(lobbyChannel, "!mp add " + lobby.creatorName);
+				m_client.sendMessage(lobbyChannel, "!mp invite " + lobby.creatorName);
 			lobby.timer = new TimerThread(this, lobby);
 			lobby.timer.start();
 			if (lobby.permanent) {
@@ -633,7 +633,7 @@ public class IRCBot {
 	 * true; } } if (!voted) { if
 	 * (lobby.slots.get(i).status.equalsIgnoreCase("Ready")) { ready++; } }
 	 * players++; } } } if (players == 0) { lobby.timer.resetTimer(); return; }
-	 * 
+	 *
 	 * if (ready >= round(players * 0.6, 0)) {
 	 * m_client.sendMessage(lobby.channel, ready + "/" + players +
 	 * " have voted to start the game, starting."); start(lobby); } if (ready <

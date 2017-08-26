@@ -187,14 +187,14 @@ public class PrivateMessageHandler {
 				if (i == moveMe) {
 					if (lobby.slots.size() < 16) {
 						if (lobby.Password.equals("")) {
-							m_client.sendMessage(lobby.channel, "!mp add " + sender);
+							m_client.sendMessage(lobby.channel, "!mp invite " + sender);
 						} else {
 							if (matchMove.groupCount() < 2) {
 								m_client.sendMessage(sender,
 										"The lobby you selected has a password. Please use !moveme [lobby] [pw]");
 							} else {
 								if (matchMove.group(2).equals(lobby.Password)) {
-									m_client.sendMessage(lobby.channel, "!mp add " + sender);
+									m_client.sendMessage(lobby.channel, "!mp invite " + sender);
 								}
 							}
 						}
@@ -211,7 +211,7 @@ public class PrivateMessageHandler {
 				for (Lobby lobby : m_bot.getLobbies().values()) {
 					if (lobby.Password.equals(matchPW.group(1))) {
 						if (lobby.slots.size() < lobby.LobbySize) {
-							m_client.sendMessage(lobby.channel, "!mp add " + sender);
+							m_client.sendMessage(lobby.channel, "!mp invite " + sender);
 						} else
 							m_client.sendMessage(sender, "Lobby is full, try again later ;)");
 
