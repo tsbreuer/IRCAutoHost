@@ -22,7 +22,6 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.HttpClients;
-import sun.plugin.dom.exception.InvalidStateException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -499,8 +498,8 @@ public class ChannelMessageHandler {
 		case "closeroom":
 			handleCloseRoom(lobby, sender);
 			break;
-		case "songsearch":
-			handleSongSearch(lobby, sender, message);
+		case "searchsong":
+			handleSearchSong(lobby, sender, message);
 			break;
 		default:
 			// Unknown command.
@@ -1231,7 +1230,7 @@ public class ChannelMessageHandler {
 		m_bot.removeLobby(lobby);
 	}
 
-	private void handleSongSearch(Lobby lobby, String sender, String message) {
+	private void handleSearchSong(Lobby lobby, String sender, String message) {
 		if (lobby.lockAdding) {
 			m_client.sendMessage(lobby.channel, sender + " sorry, beatmap requesting is currently disabled.");
 			return;
