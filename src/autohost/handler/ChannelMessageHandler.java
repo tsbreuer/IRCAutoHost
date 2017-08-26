@@ -22,6 +22,7 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.HttpClients;
+import sun.plugin.dom.exception.InvalidStateException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -169,12 +170,14 @@ public class ChannelMessageHandler {
 				message);
 		if (sM.matches()) {
 			int slotN = Integer.valueOf(sM.group(1));
-			Matcher nameFix = RegexUtils.matcher("((.+)?(\\h*\\[(.+)\\])|.+)", sM.group(5).trim());
+			Matcher nameFix = RegexUtils.matcher(
+					"(.+)?\\h*((\\[( |Host|\\/|NoFail|Easy|Relax|FlashLight|SpunOut|Hidden|HardRock|Relax2|,)*\\]))",
+					sM.group(5).trim());
 			String name;
-			if (!nameFix.matches()) {
-				name = sM.group(5).trim();
+			if (nameFix.matches()) {
+				name = nameFix.group(1);
 			} else {
-				name = nameFix.group(0);
+				name = sM.group(5);
 			}
 			if (name == null) {
 				return;
@@ -199,6 +202,7 @@ public class ChannelMessageHandler {
 				m_bot.m_writer.flush();
 				lobby.slots.put(slotN, slotM);
 			}
+			System.out.println("Slot movement: '" + name + "'");
 			return;
 		}
 
