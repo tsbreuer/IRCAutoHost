@@ -884,14 +884,8 @@ public class IRCBot {
 				}
 				if (lobby.onlyDifficulty) { // Does the lobby have
 											// locked difficulty limits?
-					if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) { // Are
-																														// we
-																														// inside
-																														// the
-																														// criteria?
-																														// if
-																														// not,
-																														// return
+					if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) {
+						// Are we inside the criteria? if not, return
 						m_client.sendMessage(lobby.channel,
 								"ERROR: The difficulty of the random beatmap found does not match the lobby criteria."
 										+ "(Lobby m/M: " + lobby.minDifficulty + "*/" + lobby.maxDifficulty + "*),"
@@ -933,7 +927,8 @@ public class IRCBot {
 	}
 
 	public void getRandomWithinSettings(Lobby lobby, Consumer<JSONObject> callback)
-			throws URISyntaxException, ClientProtocolException, IOException, JSONException {
+			throws URISyntaxException, IOException, JSONException
+	{
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 

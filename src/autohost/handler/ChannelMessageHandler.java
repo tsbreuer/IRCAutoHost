@@ -142,14 +142,12 @@ public class ChannelMessageHandler {
 
 		Matcher passmatch = RegexUtils.matcher("(.+) the match password", message);
 		if (passmatch.matches()) {
-			if (passmatch.group(1).equals("Enabled")) {
+			if (passmatch.group(1).equals("Changed")) {
 				if (lobby.Password.equalsIgnoreCase("")) {
 					m_client.sendMessage(lobby.channel, "!mp password");
 				}
-			} else {
-				if (!lobby.Password.equalsIgnoreCase("")) {
-					m_client.sendMessage(lobby.channel, "!mp password");
-				}
+			} else if (!lobby.Password.equalsIgnoreCase("")) {
+				m_client.sendMessage(lobby.channel, "!mp password");
 			}
 			return;
 		}
@@ -905,8 +903,14 @@ public class ChannelMessageHandler {
 
 		Matcher diffM = RegexUtils.matcher("maxdiff (\\d+(?:\\.\\d+)?)", message);
 		if (diffM.matches()) {
-			lobby.maxDifficulty = Double.valueOf(diffM.group(1));
-			m_client.sendMessage(lobby.channel, "Max difficulty now is " + diffM.group(1));
+			double maxDiff = Double.valueOf(diffM.group(1));
+			if (lobby.minDifficulty != null && maxDiff < lobby.minDifficulty) {
+				m_client.sendMessage(lobby.channel, "Max diff must be greater than min diff, which is "
+						+ lobby.minDifficulty);
+			} else {
+				lobby.maxDifficulty = maxDiff;
+				m_client.sendMessage(lobby.channel, "Max difficulty now is " + diffM.group(1));
+			}
 		}
 	}
 
@@ -1061,14 +1065,19 @@ public class ChannelMessageHandler {
 			return;
 
 		Matcher pwmatch = RegexUtils.matcher("password (.+)?", message);
-		if (pwmatch.matches()) {
-			if (pwmatch.groupCount() == 1) {
-				if (pwmatch.group(1).equalsIgnoreCase("reset")) {
-					lobby.Password = "";
-				} else {
-					lobby.Password = pwmatch.group(1);
-				}
+		if (pwmatch.matches() && pwmatch.groupCount() == 1) {
+			if (pwmatch.group(1).equalsIgnoreCase("reset")) {
+				lobby.Password = "";
 				m_client.sendMessage(lobby.channel, "!mp password");
+				m_client.sendMessage(lobby.channel, "Password has been cleared!");
+			} else {
+				lobby.Password = pwmatch.group(1);
+				m_client.sendMessage(lobby.channel, "!mp password " + lobby.Password);
+				m_client.sendMessage(lobby.channel, "Password has been set!");
+			}
+		} else {
+			if (lobby.Password == null || lobby.Password.equals("")) {
+				m_client.sendMessage(lobby.channel, "This lobby has no password.");
 			} else {
 				m_client.sendMessage(lobby.channel, "Current password is " + lobby.Password);
 			}
@@ -1081,8 +1090,14 @@ public class ChannelMessageHandler {
 
 		Matcher diffM = RegexUtils.matcher("mindiff (\\d+(?:\\.\\d+)?)", message);
 		if (diffM.matches()) {
-			lobby.minDifficulty = Double.valueOf(diffM.group(1));
-			m_client.sendMessage(lobby.channel, "New minimum difficulty is " + diffM.group(1));
+			double minDiff = Double.valueOf(diffM.group(1));
+			if (lobby.maxDifficulty != null && minDiff > lobby.maxDifficulty) {
+				m_client.sendMessage(lobby.channel, "Min diff must be less than max diff, which is "
+						+ lobby.maxDifficulty);
+			} else {
+				lobby.minDifficulty = minDiff;
+				m_client.sendMessage(lobby.channel, "New minimum difficulty is " + diffM.group(1));
+			}
 		}
 	}
 
