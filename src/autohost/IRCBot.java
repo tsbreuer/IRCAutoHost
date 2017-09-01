@@ -462,6 +462,7 @@ public class IRCBot {
 		synchronized (m_permanentLobbies) {
 			if (m_permanentLobbies.containsKey(lobby.channel)) {
 				m_permanentLobbies.get(lobby.channel).stopped = true;
+				m_permanentLobbies.get(lobby.channel).lobby.timer.stopTimer();
 				m_permanentLobbies.remove(lobby.channel);
 			}
 		}

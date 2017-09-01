@@ -3,6 +3,7 @@ package autohost.handler;
 import autohost.IRCBot;
 import autohost.Lobby;
 import autohost.irc.IRCClient;
+import autohost.util.LobbyChecker;
 import autohost.util.RegexUtils;
 
 import java.util.Iterator;
@@ -78,8 +79,24 @@ public class PrivateMessageHandler {
 
 	private void handleInfo(String sender) {
 		m_client.sendMessage(sender, m_bot.getConfig().pmhelp);
+		m_client.sendMessage(sender, "--- Common Lobbies ---");
 		int i = 0;
 		for (Lobby lobby : m_bot.getLobbies().values()) {
+			i++;
+			String password;
+			if (lobby.Password.equalsIgnoreCase("")) {
+				password = "Password: Disabled";
+			} else {
+				password = "Password: Enabled";
+			}
+
+			m_client.sendMessage(sender,
+					"Lobby [" + i + "] || Name: " + lobby.name + " || Stars: " + lobby.minDifficulty + "* - "
+							+ lobby.maxDifficulty + "* || Slots: [" + lobby.slots.size() + "/16] || " + password);
+		}
+		m_client.sendMessage(sender, "--- Permanent Lobbies ---");
+		for (LobbyChecker lobbyC : m_bot.getpermanentLobbies().values()) {  
+			Lobby lobby = lobbyC.lobby;
 			i++;
 			String password;
 			if (lobby.Password.equalsIgnoreCase("")) {
@@ -203,12 +220,46 @@ public class PrivateMessageHandler {
 					}
 				}
 			}
+			for (LobbyChecker lobbyC : m_bot.getpermanentLobbies().values()) {
+				Lobby lobby = lobbyC.lobby;
+				i++;
+				if (i == moveMe) {
+					if (lobby.slots.size() < 16) {
+						if (lobby.Password.equals("")) {
+							m_client.sendMessage(lobby.channel, "!mp invite " + sender);
+						} else {
+							if (matchMove.groupCount() < 2) {
+								m_client.sendMessage(sender,
+										"The lobby you selected has a password. Please use !moveme [lobby] [pw]");
+							} else {
+								if (matchMove.group(2).equals(lobby.Password)) {
+									m_client.sendMessage(lobby.channel, "!mp invite " + sender);
+								}
+							}
+						}
+					} else {
+						m_client.sendMessage(sender, "Lobby is full, sorry");
+					}
+				}
+			}
 		} else {
 			Matcher matchPW = RegexUtils.matcher("moveme (.+)", message);
 			if (!matchPW.matches()) {
 				m_client.sendMessage(sender, "Wrong format, please use !moveme [lobby number provided by help]");
 			} else {
 				for (Lobby lobby : m_bot.getLobbies().values()) {
+					if (lobby.Password.equals(matchPW.group(1))) {
+						if (lobby.slots.size() < lobby.LobbySize) {
+							m_client.sendMessage(lobby.channel, "!mp invite " + sender);
+						} else
+							m_client.sendMessage(sender, "Lobby is full, try again later ;)");
+
+						return;
+					}
+
+				}
+				for (LobbyChecker lobbyC : m_bot.getpermanentLobbies().values()) {
+					Lobby lobby = lobbyC.lobby;
 					if (lobby.Password.equals(matchPW.group(1))) {
 						if (lobby.slots.size() < lobby.LobbySize) {
 							m_client.sendMessage(lobby.channel, "!mp invite " + sender);
