@@ -46,7 +46,7 @@ public class Beatmap {
 	public Beatmap() {
 	};
 
-	public Beatmap(JSONObject obj) throws JSONException {
+	public Beatmap(JSONObject obj) throws JSONException, BrokenBeatmap {
 		this.DT = this.NC = this.HT = false;
 		this.gamemode = obj.getString("mode");
 		this.graveyard = obj.getInt("approved");
@@ -71,6 +71,10 @@ public class Beatmap {
 		this.play_count = obj.getInt("playcount");
 		this.pass_count = obj.getInt("passcount");
 		try {
+			String maxcombo = obj.getString("max_combo");
+			if (maxcombo.equalsIgnoreCase("null")){
+				throw new BrokenBeatmap();
+			}
 			this.maxcombo = obj.getInt("max_combo");
 		} catch (JSONException e) {
 			if (!this.gamemode.equalsIgnoreCase("3") || !this.gamemode.equalsIgnoreCase("1"))

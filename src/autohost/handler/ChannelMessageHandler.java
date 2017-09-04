@@ -5,6 +5,7 @@ import autohost.IRCBot;
 import autohost.Lobby;
 import autohost.irc.IRCClient;
 import autohost.util.Beatmap;
+import autohost.util.BrokenBeatmap;
 import autohost.util.JSONUtils;
 import autohost.util.LobbyChecker;
 import autohost.util.RegexUtils;
@@ -22,6 +23,7 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.HttpClients;
+import org.json.JSONException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -585,7 +587,15 @@ public class ChannelMessageHandler {
 					return;
 				}
 
-				Beatmap beatmap = JSONUtils.silentGetBeatmap(obj);
+				Beatmap beatmap = null;
+				try {
+					beatmap = new Beatmap(obj);
+				} catch (JSONException e) {
+					e.printStackTrace();
+				} catch (BrokenBeatmap e) {
+					m_client.sendMessage(lobby.channel,sender+ " this beatmap has invalid attributes. This may be due to being a broken beatmap. Avoiding.");
+					return;
+				}
 				beatmap.RequestedBy = m_bot.getId(sender);
 				if (lobby.onlyDifficulty) { // Does the lobby have
 					// locked difficulty limits?
@@ -668,7 +678,7 @@ public class ChannelMessageHandler {
 				m_bot.addBeatmap(lobby, beatmap);
 
 			});
-		} catch (Exception e) {
+		} catch (JSONException | URISyntaxException | IOException e) {
 			e.printStackTrace();
 		}
 	}
