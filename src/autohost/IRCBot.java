@@ -33,6 +33,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
@@ -250,15 +251,12 @@ public class IRCBot {
 			if (target.startsWith("#")) {
 				new ChannelMessageHandler(this).handle(target, user, message);
 			} else {
-				 if (LOCK_NAME != null
-						 && !user.equalsIgnoreCase(LOCK_NAME)
-						 && !user.equalsIgnoreCase("BanchoBot"))
-				 {
-					 m_client.sendMessage(user, "kieve is currently testing / fixing AutoHost. "
-							 + "He'll announce in the [https://discord.gg/UDabf2y AutoHost Discord] when he's done");
-				 } else {
-					 new PrivateMessageHandler(this).handle(user, message);
-				 }
+				if (LOCK_NAME != null && !user.equalsIgnoreCase(LOCK_NAME) && !user.equalsIgnoreCase("BanchoBot")) {
+					m_client.sendMessage(user, "kieve is currently testing / fixing AutoHost. "
+							+ "He'll announce in the [https://discord.gg/UDabf2y AutoHost Discord] when he's done");
+				} else {
+					new PrivateMessageHandler(this).handle(user, message);
+				}
 			}
 		}
 
@@ -639,18 +637,18 @@ public class IRCBot {
 	 * (int i = 0; i < 16; i++) { if (lobby.slots.get(i) != null) { if
 	 * (lobby.slots.get(i).playerid != 0) { Boolean voted = false; for (String
 	 * string : lobby.voteStart) { if
-	 * (string.equalsIgnoreCase(lobby.slots.get(i).name)) { ready++; voted =
-	 * true; } } if (!voted) { if
-	 * (lobby.slots.get(i).status.equalsIgnoreCase("Ready")) { ready++; } }
-	 * players++; } } } if (players == 0) { lobby.timer.resetTimer(); return; }
+	 * (string.equalsIgnoreCase(lobby.slots.get(i).name)) { ready++; voted = true; }
+	 * } if (!voted) { if (lobby.slots.get(i).status.equalsIgnoreCase("Ready")) {
+	 * ready++; } } players++; } } } if (players == 0) { lobby.timer.resetTimer();
+	 * return; }
 	 *
-	 * if (ready >= round(players * 0.6, 0)) {
-	 * m_client.sendMessage(lobby.channel, ready + "/" + players +
-	 * " have voted to start the game, starting."); start(lobby); } if (ready <
-	 * round(players * 0.6, 0)) { m_client.sendMessage(lobby.channel, ready +
-	 * "/" + (int) (round(players * 0.75, 0)) +
-	 * " votes to start the game. Please do !ready (or !r) if you're ready."); }
-	 * if (players == 0) { nextbeatmap(lobby); } }
+	 * if (ready >= round(players * 0.6, 0)) { m_client.sendMessage(lobby.channel,
+	 * ready + "/" + players + " have voted to start the game, starting.");
+	 * start(lobby); } if (ready < round(players * 0.6, 0)) {
+	 * m_client.sendMessage(lobby.channel, ready + "/" + (int) (round(players *
+	 * 0.75, 0)) +
+	 * " votes to start the game. Please do !ready (or !r) if you're ready."); } if
+	 * (players == 0) { nextbeatmap(lobby); } }
 	 */
 
 	public void tryStart(Lobby lobby) {
@@ -781,7 +779,7 @@ public class IRCBot {
 		}
 	}
 
-	public beatmapFile getPeppyPoints(int beatmapid, Lobby lobby) {
+	public beatmapFile getPeppyPoints(int beatmapid, Lobby lobby) throws BrokenBeatmap {
 		if (lobby.type.equals("2"))
 			return null;
 
@@ -850,86 +848,106 @@ public class IRCBot {
 			str[3] = ssHDHR;
 		} catch (IOException | URISyntaxException | BeatmapException e) {
 			e.printStackTrace();
+			Matcher error = RegexUtils.matcher("Couldn't find required \"General\" tag found", e.getMessage());
 			m_client.sendMessage(lobby.channel, "Error Parsing beatmap");
+			if (error.matches()) {
+				throw new BrokenBeatmap("broken-tag");
+			}
+			else
 			return null;
 		}
 		bm.setpptab(str);
 		return bm;
 	}
 
-	public void getRandomBeatmap(Lobby lobby) {
+	public void getRandomBeatmap(Lobby lobby) throws BrokenBeatmap {
 		Beatmap returnBeatmap = new Beatmap();
 		try {
-			getRandomWithinSettings(lobby, (obj) -> {
-				if (obj == null) {
-					m_client.sendMessage(lobby.channel, "An error ocurred while searching for a random beatmap.");
-					m_client.sendMessage(lobby.channel, "Maybe no matches for current lobby settings? Retrying");
-					nextbeatmap(lobby);
-					return;
-				}
-
-				String mode = "" + JSONUtils.silentGetInt(obj, "gamemode");
-				if (!mode.equals(lobby.type)) {
-					m_client.sendMessage(lobby.channel, "ERORR: The random beatmap did not fit this lobby's gamemode!");
-					return;
-				}
-				Beatmap beatmap = JSONUtils.silentGetBeatmap(obj, true);
-				beatmapFile bm = getPeppyPoints(beatmap.beatmap_id, lobby);
-				if (bm == null) {
-					if (!lobby.type.equals("2")) {
-						m_client.sendMessage(lobby.channel, "An error ocurred while loading the random beatmap.");
-						m_client.sendMessage(lobby.channel, "Maybe it doesnt exist anymore? Retrying");
+			try {
+				getRandomWithinSettings(lobby, (obj) -> {
+					if (obj == null) {
+						m_client.sendMessage(lobby.channel, "An error ocurred while searching for a random beatmap.");
+						m_client.sendMessage(lobby.channel, "Maybe no matches for current lobby settings? Retrying");
 						nextbeatmap(lobby);
 						return;
 					}
-				}
-				if (lobby.onlyDifficulty) { // Does the lobby have
-											// locked difficulty limits?
-					if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) {
-						// Are we inside the criteria? if not, return
+
+					String mode = "" + JSONUtils.silentGetInt(obj, "gamemode");
+					if (!mode.equals(lobby.type)) {
 						m_client.sendMessage(lobby.channel,
-								"ERROR: The difficulty of the random beatmap found does not match the lobby criteria."
-										+ "(Lobby m/M: " + lobby.minDifficulty + "*/" + lobby.maxDifficulty + "*),"
-										+ " Song: " + beatmap.difficulty + "*");
+								"ERORR: The random beatmap did not fit this lobby's gamemode!");
 						return;
 					}
-				}
-				if (!lobby.statusTypes.get(beatmap.graveyard)) {
-					m_client.sendMessage(lobby.channel,
-							"ERROR: The random beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
-					return;
-				}
-
-				if (lobby.maxAR != 0) {
-					if (beatmap.difficulty_ar > lobby.maxAR) {
-
-						m_client.sendMessage(lobby.channel,
-								"ERROR: The random beatmap has a too high Approach Rate for this lobby! Max: "
-										+ lobby.maxAR + " beatmap AR: " + beatmap.difficulty_ar);
+					Beatmap beatmap = JSONUtils.silentGetBeatmap(obj, true);
+					beatmapFile bm = null;
+					try {
+					bm = getPeppyPoints(beatmap.beatmap_id, lobby);
+					}
+					catch (BrokenBeatmap e) {
+						if (e.getMessage().equals("broken-tag")) {
+							m_client.sendMessage(lobby.channel, "Beatmap has no 'general' tag. Is it broken?");
+						}
 						return;
 					}
-				}
-
-				if (lobby.onlyGenre) {
-					if (!beatmap.genre.equalsIgnoreCase(lobby.genre)) {
+					
+					if (bm == null) {
+						if (!lobby.type.equals("2")) {
+							m_client.sendMessage(lobby.channel, "An error ocurred while loading the random beatmap.");
+							m_client.sendMessage(lobby.channel, "Maybe it doesnt exist anymore? Retrying");
+							nextbeatmap(lobby);
+							return;
+						}
+					}
+					if (lobby.onlyDifficulty) { // Does the lobby have
+												// locked difficulty limits?
+						if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) {
+							// Are we inside the criteria? if not, return
+							m_client.sendMessage(lobby.channel,
+									"ERROR: The difficulty of the random beatmap found does not match the lobby criteria."
+											+ "(Lobby m/M: " + lobby.minDifficulty + "*/" + lobby.maxDifficulty + "*),"
+											+ " Song: " + beatmap.difficulty + "*");
+							return;
+						}
+					}
+					if (!lobby.statusTypes.get(beatmap.graveyard)) {
 						m_client.sendMessage(lobby.channel,
-								"ERROR: Beatmap genre is incorrect. This lobby is set to only play "
-										+ lobby.genres[Integer.valueOf(lobby.genre)] + " genre!");
+								"ERROR: The random beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
 						return;
 					}
-				}
 
-				changeBeatmap(lobby, beatmap);
-			});
-		} catch (Exception e) {
+					if (lobby.maxAR != 0) {
+						if (beatmap.difficulty_ar > lobby.maxAR) {
+
+							m_client.sendMessage(lobby.channel,
+									"ERROR: The random beatmap has a too high Approach Rate for this lobby! Max: "
+											+ lobby.maxAR + " beatmap AR: " + beatmap.difficulty_ar);
+							return;
+						}
+					}
+
+					if (lobby.onlyGenre) {
+						if (!beatmap.genre.equalsIgnoreCase(lobby.genre)) {
+							m_client.sendMessage(lobby.channel,
+									"ERROR: Beatmap genre is incorrect. This lobby is set to only play "
+											+ lobby.genres[Integer.valueOf(lobby.genre)] + " genre!");
+							return;
+						}
+					}
+
+					changeBeatmap(lobby, beatmap);
+				});
+			} catch (SocketTimeoutException e) {
+				m_client.sendMessage(lobby.channel, "We're getting timed out. Is [http://osusearch.com osusearch] down? If so, use !add command.");
+				throw new BrokenBeatmap("timed-out");
+			}
+		} catch (IOException | JSONException | URISyntaxException e) {
 			e.printStackTrace();
 			nextbeatmap(lobby);
 		}
 	}
 
 	public void getRandomWithinSettings(Lobby lobby, Consumer<JSONObject> callback)
-			throws URISyntaxException, IOException, JSONException
-	{
+			throws URISyntaxException, IOException, JSONException, SocketTimeoutException {
 		RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
 				.setConnectionRequestTimeout(10000).build();
 
@@ -1163,8 +1181,15 @@ public class IRCBot {
 		}
 
 		String md = "";
-
-		beatmapFile pplife = getPeppyPoints(next.beatmap_id, lobby);
+		beatmapFile pplife = null;
+		try {
+			pplife = getPeppyPoints(next.beatmap_id, lobby);
+		}
+		catch (BrokenBeatmap e) {
+			if (e.getMessage().equals("broken-tag")) {
+				m_client.sendMessage(lobby.channel, "Beatmap has no 'general' tag. Is it broken?");
+			}
+		}
 		if (pplife == null) {
 			if (!lobby.type.equals("2")) {
 				m_client.sendMessage(lobby.channel, "Beatmap was unable to be analyzed. Does it exist? Skipping");
@@ -1201,7 +1226,14 @@ public class IRCBot {
 			if (lobby.TrueRandom) {
 				m_client.sendMessage(lobby.channel,
 						"Queue is empty. Selecting a random beatmap matching this lobby...");
+				try {
 				getRandomBeatmap(lobby);
+				}
+				catch (BrokenBeatmap e) {
+					if (e.getMessage().equals("timed-out")) {
+						m_client.sendMessage(lobby.channel, "Due to timed-out beatmap request, lobby is halted. Please vote skip to attempt again");
+					}
+				}
 				return;
 			} else {
 				next = lobby.beatmapPlayed.poll();
@@ -1250,7 +1282,15 @@ public class IRCBot {
 
 		String md = "";
 
-		beatmapFile pplife = getPeppyPoints(next.beatmap_id, lobby);
+		beatmapFile pplife = null;
+		try {
+			pplife = getPeppyPoints(next.beatmap_id, lobby);
+		}
+		catch (BrokenBeatmap e) {
+			if (e.getMessage().equals("broken-tag")) {
+				m_client.sendMessage(lobby.channel, "Beatmap has no 'general' tag. Is it broken?");
+			}
+		}
 		if (lobby.DoubleTime)
 			md = md + "DT";
 		if (lobby.NightCore)
@@ -1302,19 +1342,16 @@ public class IRCBot {
 				/*
 				 * RequestConfig defaultRequestConfig =
 				 * RequestConfig.custom().setSocketTimeout(10000)
-				 * .setConnectTimeout(10000).setConnectionRequestTimeout(10000).
-				 * build(); HttpClient httpClient =
-				 * HttpClients.custom().setDefaultRequestConfig(
-				 * defaultRequestConfig).build(); URI uri = new URIBuilder()
-				 * .setScheme("http") .setHost("osu.ppy.sh")
-				 * .setPath("/api/get_user") .setParameter("k", m_config.apikey)
-				 * .setParameter("u", "" + name) .setParameter("type", "string")
-				 * .build(); HttpGet request = new HttpGet(uri); HttpResponse
-				 * response = httpClient.execute(request); InputStream content =
+				 * .setConnectTimeout(10000).setConnectionRequestTimeout(10000). build();
+				 * HttpClient httpClient = HttpClients.custom().setDefaultRequestConfig(
+				 * defaultRequestConfig).build(); URI uri = new URIBuilder() .setScheme("http")
+				 * .setHost("osu.ppy.sh") .setPath("/api/get_user") .setParameter("k",
+				 * m_config.apikey) .setParameter("u", "" + name) .setParameter("type",
+				 * "string") .build(); HttpGet request = new HttpGet(uri); HttpResponse response
+				 * = httpClient.execute(request); InputStream content =
 				 * response.getEntity().getContent(); String stringContent =
 				 * IOUtils.toString(content, "UTF-8"); JSONArray array = new
-				 * JSONArray(stringContent); id =
-				 * array.getJSONObject(0).getInt("user_id");
+				 * JSONArray(stringContent); id = array.getJSONObject(0).getInt("user_id");
 				 */
 			} catch (JSONException | URISyntaxException | IOException e) {
 				e.printStackTrace();
