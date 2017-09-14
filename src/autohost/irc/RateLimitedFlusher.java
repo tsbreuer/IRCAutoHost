@@ -1,5 +1,7 @@
 package autohost.irc;
 
+import java.util.Iterator;
+
 import autohost.util.ThreadUtils;
 
 class RateLimitedFlusher extends Thread {
@@ -14,12 +16,12 @@ class RateLimitedFlusher extends Thread {
 	@Override
 	public void run() {
 		while (true) {
-			for (RateLimitedChannel limiter : m_client.getChannels().values()) {
-				if (limiter.hasNext()) {
-					String line = limiter.poll();
-					if (line != null)
-						m_client.write(line);
-				}
+			Iterator<RateLimitedChannel> it = m_client.getChannels().values().iterator();
+			while (it.hasNext()) {
+				RateLimitedChannel limiter = it.next();
+				String line = limiter.poll();
+				if (line != null)
+				m_client.write(line);
 			}
 			ThreadUtils.sleepQuietly(m_delay);
 		}

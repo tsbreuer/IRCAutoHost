@@ -836,7 +836,17 @@ public class ChannelMessageHandler {
 			m_client.sendMessage(lobby.channel, sender + " voted for starting! (" + lobby.voteStart.size() + "/"
 					+ (int) round(lobby.slots.size() * 0.75, 0) + ")");
 			if (lobby.voteStart.size() >= round(lobby.slots.size() * 0.75, 0)) {
+				if (lobby.timer.added) {
+					if (lobby.timer.askedAlready) {
+						m_bot.start(lobby);
+						return;
+					}
+				lobby.timer.starting = true;
+				lobby.timer.startingTime =  System.currentTimeMillis();
+				}
+				else {
 				m_bot.start(lobby);
+				}
 			}
 		}
 	}

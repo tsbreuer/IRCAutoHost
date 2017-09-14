@@ -12,16 +12,16 @@ public class IRCClient {
 	private static final int DEFAULT_DELAY = 200;
 
 	private final String m_address;
-	private final int    m_port;
+	private final int m_port;
 	private final String m_user;
 	private final String m_password;
 
-	private Socket      m_socket;
+	private Socket m_socket;
 	private PrintStream m_outStream;
 
-	private RateLimitedFlusher              m_flusher;
+	private RateLimitedFlusher m_flusher;
 	private Map<String, RateLimitedChannel> m_channels;
-	private int                             m_delay;
+	private int m_delay;
 
 	private boolean m_disconnected;
 
@@ -103,10 +103,12 @@ public class IRCClient {
 	}
 
 	public void sendMessage(String channel, String message) {
-		if (!m_channels.containsKey(channel)) {
-			m_channels.put(channel, new RateLimitedChannel(channel, m_delay));
-		}
+		synchronized (m_channels) {
+			if (!m_channels.containsKey(channel)) {
+				m_channels.put(channel, new RateLimitedChannel(channel, m_delay));
+			}
 
-		m_channels.get(channel).addMessage(message);
+			m_channels.get(channel).addMessage(message);
+		}
 	}
 }
