@@ -10,8 +10,11 @@ import java.util.*;
 public class Lobby {
 	public String channel = "";
 	public Integer LobbySize = 16;
+	public Integer lobbyNumber;
+	
 	public List<Integer> OPs = new LinkedList<>();
-
+	
+	
 	public List<String> voteStart = new LinkedList<>();
 	public List<String> voteskip  = new LinkedList<>();
 

@@ -49,6 +49,7 @@ public class IRCBot {
 	// Set this to your name to have AutoHost only accept your commands.
 	private static final String LOCK_NAME = null;
 
+	public static LobbyCount = 0;
 	public PrintWriter m_writer;
 	private final IRCClient m_client;
 	private Config m_config;
