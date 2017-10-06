@@ -45,6 +45,10 @@ public class IRCClient {
 		m_delay = delay;
 	}
 
+	public RateLimitedChannel getChannel (String channel) {
+		return m_channels.get(channel);
+	}
+	
 	public InputStream getInputStream() throws IOException {
 		return m_socket.getInputStream();
 	}

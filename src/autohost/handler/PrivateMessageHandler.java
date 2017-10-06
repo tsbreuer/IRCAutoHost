@@ -3,9 +3,11 @@ package autohost.handler;
 import autohost.IRCBot;
 import autohost.Lobby;
 import autohost.irc.IRCClient;
+import autohost.irc.RateLimitedChannel;
 import autohost.util.LobbyChecker;
 import autohost.util.RegexUtils;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.regex.Matcher;
@@ -42,6 +44,9 @@ public class PrivateMessageHandler {
 		case "info":
 			handleInfo(sender);
 			break;
+		case "rooms":
+		case "roomlist":
+			handleRoomList(sender);
 		case "reloadRooms":
 			handleReloadRooms(sender);
 			break;
@@ -79,10 +84,16 @@ public class PrivateMessageHandler {
 
 	private void handleInfo(String sender) {
 		m_client.sendMessage(sender, m_bot.getConfig().pmhelp);
+	}
+
+	public void handleRoomList(String sender){
+		RateLimitedChannel channel = m_client.getChannel(sender);
+		channel.c_roomList = new HashMap<Integer, String>();
 		m_client.sendMessage(sender, "--- Common Lobbies ---");
 		int i = 0;
 		for (Lobby lobby : m_bot.getLobbies().values()) {
 			i++;
+			channel.c_roomList.put(i, lobby.channel);
 			String password;
 			if (lobby.Password.equalsIgnoreCase("")) {
 				password = "Password: Disabled";
@@ -104,13 +115,13 @@ public class PrivateMessageHandler {
 			} else {
 				password = "Password: Enabled";
 			}
-
+			channel.c_roomList.put(i, lobby.channel);
 			m_client.sendMessage(sender,
 					"Lobby [" + i + "] || Name: " + lobby.name + " || Stars: " + lobby.minDifficulty + "* - "
 							+ lobby.maxDifficulty + "* || Slots: [" + lobby.slots.size() + "/16] || " + password);
 		}
 	}
-
+	
 	private void handleReloadRooms(String sender) {
 		if (!m_bot.isOP(sender))
 			return;
@@ -193,15 +204,18 @@ public class PrivateMessageHandler {
 	private void handleMoveMe(String sender, String message) {
 		if (!message.contains(" "))
 			return;
-
+		RateLimitedChannel channel = m_client.getChannel(sender);
 		Matcher matchMove = RegexUtils.matcher("moveme (\\d+)", message);
-
 		if (matchMove.matches()) {
 			int moveMe = Integer.valueOf(matchMove.group(1));
-			int i = 0;
+			String lobbyChannel = channel.c_roomList.get(moveMe);
+			if (lobbyChannel == null){
+				return;
+			}
+			Boolean found = false;
 			for (Lobby lobby : m_bot.getLobbies().values()) {
-				i++;
-				if (i == moveMe) {
+				if (lobbyChannel.equals(lobby.channel)) {
+					found = true;
 					if (lobby.slots.size() < 16) {
 						if (lobby.Password.equals("")) {
 							m_client.sendMessage(lobby.channel, "!mp invite " + sender);
@@ -222,8 +236,8 @@ public class PrivateMessageHandler {
 			}
 			for (LobbyChecker lobbyC : m_bot.getpermanentLobbies().values()) {
 				Lobby lobby = lobbyC.lobby;
-				i++;
-				if (i == moveMe) {
+				if (lobbyChannel.equals(lobby.channel)) {
+					found = true;
 					if (lobby.slots.size() < 16) {
 						if (lobby.Password.equals("")) {
 							m_client.sendMessage(lobby.channel, "!mp invite " + sender);
@@ -241,6 +255,9 @@ public class PrivateMessageHandler {
 						m_client.sendMessage(sender, "Lobby is full, sorry");
 					}
 				}
+			}
+			if (!found){
+				m_client.sendMessage(sender, "The lobby you requested no longer exists. Sorry 'bout that. Please get a new list with '!rooms'");
 			}
 		} else {
 			Matcher matchPW = RegexUtils.matcher("moveme (.+)", message);

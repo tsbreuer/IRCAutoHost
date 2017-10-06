@@ -49,8 +49,9 @@ public class IRCBot {
 	// Set this to your name to have AutoHost only accept your commands.
 	private static final String LOCK_NAME = null;
 
-	public static LobbyCount = 0;
+	public static int lobbyCount = 0;
 	public PrintWriter m_writer;
+	
 	private final IRCClient m_client;
 	private Config m_config;
 	private boolean m_shouldStop;
@@ -336,7 +337,11 @@ public class IRCBot {
 			if (op != creatorID)
 				lobby.OPs.add(op);
 		}
+		autohost.irc.lobbyCount++;
+		lobby.lobbyNumber = autohost.irc.lobbyCount;
 		lobby.OPs.add(creatorID);
+		autohost.irc.lobbyCount++;
+		lobby.lobbyNumber = autohost.irc.lobbyCount;
 		m_client.sendMessage("BanchoBot", "!mp make " + name);
 	}
 
@@ -365,6 +370,8 @@ public class IRCBot {
 			if (op != creatorID)
 				lobby.OPs.add(op);
 		}
+		autohost.irc.lobbyCount++;
+		lobby.lobbyNumber = autohost.irc.lobbyCount;
 		lobby.OPs.add(creatorID);
 		m_client.write("JOIN #mp_" + channel);
 		m_client.sendMessage("#mp_" + channel, "Bot reconnect requested to this lobby by " + creator);
