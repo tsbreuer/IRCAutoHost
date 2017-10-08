@@ -3,9 +3,9 @@ package autohost.handler;
 import autohost.IRCBot;
 import autohost.Lobby;
 import autohost.irc.IRCClient;
-import autohost.irc.RateLimitedChannel;
 import autohost.util.LobbyChecker;
 import autohost.util.RegexUtils;
+import autohost.util.User;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -87,13 +87,14 @@ public class PrivateMessageHandler {
 	}
 
 	public void handleRoomList(String sender){
-		RateLimitedChannel channel = m_client.getChannel(sender);
-		channel.c_roomList = new HashMap<Integer, String>();
+		User user = m_bot.getUser(sender);
+		user.newRoomList();
+		HashMap<Integer, String> list = user.getRoomList();
 		m_client.sendMessage(sender, "--- Common Lobbies ---");
 		int i = 0;
 		for (Lobby lobby : m_bot.getLobbies().values()) {
 			i++;
-			channel.c_roomList.put(i, lobby.channel);
+			list.put(i, lobby.channel);
 			String password;
 			if (lobby.Password.equalsIgnoreCase("")) {
 				password = "Password: Disabled";
@@ -115,11 +116,12 @@ public class PrivateMessageHandler {
 			} else {
 				password = "Password: Enabled";
 			}
-			channel.c_roomList.put(i, lobby.channel);
+			list.put(i, lobby.channel);
 			m_client.sendMessage(sender,
 					"Lobby [" + i + "] || Name: " + lobby.name + " || Stars: " + lobby.minDifficulty + "* - "
 							+ lobby.maxDifficulty + "* || Slots: [" + lobby.slots.size() + "/16] || " + password);
 		}
+		user.saveRoomList(list);
 	}
 	
 	private void handleReloadRooms(String sender) {
@@ -204,11 +206,12 @@ public class PrivateMessageHandler {
 	private void handleMoveMe(String sender, String message) {
 		if (!message.contains(" "))
 			return;
-		RateLimitedChannel channel = m_client.getChannel(sender);
+		User user = m_bot.getUser(sender);
+		HashMap<Integer,String> list = user.getRoomList();
 		Matcher matchMove = RegexUtils.matcher("moveme (\\d+)", message);
 		if (matchMove.matches()) {
 			int moveMe = Integer.valueOf(matchMove.group(1));
-			String lobbyChannel = channel.c_roomList.get(moveMe);
+			String lobbyChannel = list.get(moveMe);
 			if (lobbyChannel == null){
 				return;
 			}

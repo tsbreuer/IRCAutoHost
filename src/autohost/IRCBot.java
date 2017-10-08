@@ -55,7 +55,7 @@ public class IRCBot {
 	private final IRCClient m_client;
 	private Config m_config;
 	private boolean m_shouldStop;
-
+	
 	private Map<String, Lobby> m_lobbies = new HashMap<>();
 	private Queue<Lobby> m_deadLobbies = new LinkedList<>();
 	private Map<String, LobbyChecker> m_permanentLobbies = new HashMap<>();
@@ -67,7 +67,8 @@ public class IRCBot {
 
 	public AutoHost autohost;
 	public HashBiMap<Integer, String> usernames = HashBiMap.create();
-
+	public HashBiMap<Integer, User> userDB = HashBiMap.create();
+	
 	// This is the reconnection data, just info i store for checking if Bancho
 	// went RIP
 	private ReconnectTimer m_reconnectTimer;
@@ -120,6 +121,21 @@ public class IRCBot {
 		return m_config;
 	}
 
+	public User getUser(int id) {
+		if (!userDB.containsKey(id)) {
+			userDB.put(id, new User(getUsername(id),id));
+		}
+		return userDB.get(id);
+	}
+	
+	public User getUser(String name) {
+		int id = getId(name);
+		if (!userDB.containsKey(id)) {
+			userDB.put(id, new User(name,id));
+		}
+		return userDB.get(id);
+	}
+	
 	public Map<String, Lobby> getLobbies() {
 		return m_lobbies;
 	}

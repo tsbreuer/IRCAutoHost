@@ -4,12 +4,11 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Queue;
 
-public class RateLimitedChannel {
+class RateLimitedChannel {
 	private int           m_delay;
 	private String        m_channel;
 	private Queue<String> m_messages;
 	private long          m_lastSentTime;
-	public HashMap<Integer,String> c_roomList;
 	RateLimitedChannel(String channel, int delay) {
 		m_channel = channel;
 		m_delay = delay;
