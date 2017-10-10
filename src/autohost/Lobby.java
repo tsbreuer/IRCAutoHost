@@ -18,6 +18,7 @@ public class Lobby {
 	public List<String> voteStart = new LinkedList<>();
 	public List<String> voteskip  = new LinkedList<>();
 
+	public Boolean retryForMap = false;
 	public TimerThread timer;
 	public String name = "";
 	public Boolean OPLobby = false;

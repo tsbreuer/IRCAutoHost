@@ -477,6 +477,9 @@ public class ChannelMessageHandler {
 		case "limityear":
 			handleLimitYear(lobby, sender);
 			break;
+		case "retry":
+			handleRetryForNewMap(lobby, sender);
+			break;
 		case "duration":
 			handleDuration(lobby, sender, message);
 			break;
@@ -527,6 +530,15 @@ public class ChannelMessageHandler {
 				}
 			}
 		}
+	}
+	
+	private void handleRetryForNewMap(Lobby lobby, String sender) {
+		if (!lobby.retryForMap) {
+			m_client.sendMessage(sender, "The lobby didnt have an issue with the random? Not registered.");
+			return;
+		}
+		m_bot.nextbeatmap(lobby);
+		lobby.retryForMap = false;
 	}
 
 	private void handlePrevious(Lobby lobby, String sender) {

@@ -891,8 +891,8 @@ public class IRCBot {
 				getRandomWithinSettings(lobby, (obj) -> {
 					if (obj == null) {
 						m_client.sendMessage(lobby.channel, "An error ocurred while searching for a random beatmap.");
-						m_client.sendMessage(lobby.channel, "Maybe no matches for current lobby settings? Retrying");
-						nextbeatmap(lobby);
+						m_client.sendMessage(lobby.channel, "Maybe no matches for current lobby settings? Anyone do '!retry' to try again.");
+						lobby.retryForMap = true;
 						return;
 					}
 
