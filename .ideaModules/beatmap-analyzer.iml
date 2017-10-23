@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="EclipseModuleManager">
+    <conelement value="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER" />
+    <src_description expected_position="0">
+      <src_folder value="file://$MODULE_DIR$/../beatmap-analyzer/src/main/java" expected_position="0" />
+      <src_folder value="file://$MODULE_DIR$/../beatmap-analyzer/src/test/java" expected_position="1" />
+    </src_description>
+  </component>
+  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_8">
+    <output url="file://$MODULE_DIR$/../beatmap-analyzer/target/classes" />
+    <output-test url="file://$MODULE_DIR$/../beatmap-analyzer/target/test-classes" />
+    <content url="file://$MODULE_DIR$/../beatmap-analyzer">
+      <sourceFolder url="file://$MODULE_DIR$/../beatmap-analyzer/src/main/java" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../beatmap-analyzer/src/test/java" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/../beatmap-analyzer/target" />
+    </content>
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="jdk" jdkName="JavaSE-1.8" jdkType="JavaSDK" />
+    <orderEntry type="module-library">
+      <library name="junit4">
+        <CLASSES>
+          <root url="jar://$APPLICATION_HOME_DIR$/lib/junit-4.12.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="library" scope="TEST" name="Maven: junit:junit:3.8.1" level="project" />
+  </component>
+</module>
