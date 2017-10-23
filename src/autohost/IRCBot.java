@@ -187,7 +187,7 @@ public class IRCBot {
 			m_reconnectTimer.messageReceived();
 
 			if (!msg.contains("cho@ppy.sh QUIT")) {
-				if (msg.contains("001")) {
+				if (msg.contains("001 AutoHost")) {
 					System.out.println("Logged in");
 					System.out.println("Line: " + msg);
 				} else if (msg.startsWith("PING")) {
@@ -259,6 +259,21 @@ public class IRCBot {
 						true);
 			}
 		}
+		
+		//RECV(Mon Oct 23 16:14:35 ART 2017): :BanchoBot!cho@ppy.sh PRIVMSG AutoHost :
+		//You cannot create any more tournament matches. Please close any previous tournament matches you have open.
+		Pattern staph = Pattern.compile(":BanchoBot!cho@ppy.sh PRIVMSG AutoHost :You cannot create any more tournament matches. Please close any previous tournament matches you have open.");
+		Matcher staphM = staph.matcher(line);
+		if (staphM.matches()) {
+			if (staphM.group(1).equalsIgnoreCase(m_client.getUser())) {
+				String lobbyChannel = staphM.group(2);
+				noMore(lobbyChannel);
+				System.out.println("Lobby cancelled due to limit: " + lobbyChannel);
+				return;
+			}
+		}
+		
+		
 		Pattern channel = Pattern.compile(":(.+)!cho@ppy.sh PRIVMSG (.+) :(.+)");
 		Matcher channelmatch = channel.matcher(line);
 		if (channelmatch.find()) {
@@ -270,7 +285,7 @@ public class IRCBot {
 				new ChannelMessageHandler(this).handle(target, user, message);
 			} else {
 				if (LOCK_NAME != null && !user.equalsIgnoreCase(LOCK_NAME) && !user.equalsIgnoreCase("BanchoBot")) {
-					m_client.sendMessage(user, "kieve is currently testing / fixing AutoHost. "
+					m_client.sendMessage(user, "hypex is currently testing / fixing AutoHost. "
 							+ "He'll announce in the [https://discord.gg/UDabf2y AutoHost Discord] when he's done");
 				} else {
 					new PrivateMessageHandler(this).handle(user, message);
@@ -289,6 +304,8 @@ public class IRCBot {
 			}
 		}
 
+	
+		
 		// :AutoHost!cho@ppy.sh PART :#mp_35457515
 		Pattern part = Pattern.compile(":(.+)!cho@ppy.sh PART :(.+)");
 		Matcher partM = part.matcher(line);
@@ -393,6 +410,17 @@ public class IRCBot {
 		m_client.sendMessage("#mp_" + channel, "Bot reconnect requested to this lobby by " + creator);
 		m_client.sendMessage("#mp_" + channel,
 				creator + " All settings will be set to default, so please re-set them.");
+	}
+	
+	public void noMore(String lobbyChannel) {
+		Lobby lobby = LobbyCreation.poll();
+		if (lobby != null) {
+			m_client.sendMessage(lobby.creatorName, "Sorry, autohost is currently at the maximum ammount of concurrent lobbies possible. Your lobby creation was cancelled.");
+		}
+		if (!LobbyCreation.isEmpty()) {
+			String name = LobbyCreation.peek().name;
+			m_client.sendMessage("BanchoBot", "!mp make " + name);
+		}
 	}
 
 	public void newLobby(String lobbyChannel) {

@@ -56,6 +56,9 @@ public class PrivateMessageHandler {
 		case "globalsay":
 			handleGlobalSay(sender, message);
 			break;
+		case "globalclose":
+			handleGlobalClose(sender, message);
+			break;
 		case "recreate":
 			handleRecreate(sender);
 			break;
@@ -154,6 +157,21 @@ public class PrivateMessageHandler {
 		}
 	}
 
+	private void handleGlobalClose(String sender, String message) {
+		if (!m_bot.isOP(sender))
+			return;
+
+		Matcher globalmatch = RegexUtils.matcher("globalclose", message);
+		if (globalmatch.matches()) {
+			m_client.sendMessage(sender, "Message sent");
+			for (Lobby lobby : m_bot.getLobbies().values()) {
+				m_client.sendMessage(lobby.channel, "!mp close");
+			}
+		} else {
+			m_client.sendMessage(sender, "Syntax error. Please use !globalclose");
+		}
+	}
+	
 	private void handleRecreate(String sender) {
 		Queue<Lobby> deadLobbies = m_bot.getDeadLobbies();
 		Iterator<Lobby> iter = deadLobbies.iterator();
