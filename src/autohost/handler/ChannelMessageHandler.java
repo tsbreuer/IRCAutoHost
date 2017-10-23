@@ -396,6 +396,8 @@ public class ChannelMessageHandler {
 		case "s":
 			handleSkip(lobby, sender);
 			break;
+		case "timerstatus":
+			handleTimerStatus(lobby,sender);
 		case "keys":
 			handleKeys(lobby, sender, message);
 			break;
@@ -507,6 +509,11 @@ public class ChannelMessageHandler {
 		default:
 			// Unknown command.
 		}
+	}
+
+	private void handleTimerStatus(Lobby lobby, String sender) {
+		m_client.sendMessage(lobby.channel, "Time passed since start: "+(System.currentTimeMillis() - ((lobby.timer.startingTime - lobby.timer.startAfter) - 200)));
+		m_client.sendMessage(lobby.channel, "Time left for start: "+(lobby.timer.startingTime - System.currentTimeMillis()));
 	}
 
 	private void handleKeys(Lobby lobby, String sender, String message) {
@@ -936,7 +943,7 @@ public class ChannelMessageHandler {
 		Matcher diffM = RegexUtils.matcher("maxdiff (\\d+(?:\\.\\d+)?)", message);
 		if (diffM.matches()) {
 			double maxDiff = Double.valueOf(diffM.group(1));
-			if (lobby.minDifficulty != null && maxDiff < lobby.minDifficulty) {
+			if (lobby.minDifficulty != null && maxDiff <= lobby.minDifficulty) {
 				m_client.sendMessage(lobby.channel, "Max diff must be greater than min diff, which is "
 						+ lobby.minDifficulty);
 			} else {
@@ -1123,7 +1130,7 @@ public class ChannelMessageHandler {
 		Matcher diffM = RegexUtils.matcher("mindiff (\\d+(?:\\.\\d+)?)", message);
 		if (diffM.matches()) {
 			double minDiff = Double.valueOf(diffM.group(1));
-			if (lobby.maxDifficulty != null && minDiff > lobby.maxDifficulty) {
+			if (lobby.maxDifficulty != null && minDiff >= lobby.maxDifficulty) {
 				m_client.sendMessage(lobby.channel, "Min diff must be less than max diff, which is "
 						+ lobby.maxDifficulty);
 			} else {

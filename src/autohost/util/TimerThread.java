@@ -12,7 +12,7 @@ public class TimerThread extends Thread {
 	private boolean stopped = false;
 	private long    prevTime = System.currentTimeMillis();
 	private long    startTime;
-	private long    startAfter = 2 * MINUTE;
+	public long    startAfter = 2 * MINUTE;
 	public boolean added = false;
 	public boolean starting = false;
 	public long startingTime = System.currentTimeMillis();

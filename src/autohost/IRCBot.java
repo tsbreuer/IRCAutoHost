@@ -988,9 +988,13 @@ public class IRCBot {
 
 					changeBeatmap(lobby, beatmap);
 				});
-			} catch (SocketTimeoutException e) {
+			} catch (SocketTimeoutException | JSONException e) {
+				if (e.getClass().equals(SocketTimeoutException.class)) {
 				m_client.sendMessage(lobby.channel, "We're getting timed out. Is [http://osusearch.com osusearch] down? If so, use !add command.");
-				throw new BrokenBeatmap("timed-out");
+				throw new BrokenBeatmap("timed-out");}
+				else if (e.getClass().equals(JSONException.class)) {
+				m_client.sendMessage(lobby.channel, "There was an error parsing the JSON from [http://osusearch.com osusearch]. Please do !retry to attempt again.");
+				}
 			}
 		} catch (IOException | JSONException | URISyntaxException e) {
 			e.printStackTrace();
@@ -1067,7 +1071,7 @@ public class IRCBot {
 			pick = 1;
 		} else {
 			m_client.sendMessage(lobby.channel, "Random returned 0 results. Fucked up?");
-			pick = 1;
+			pick = 0;
 		}
 		callback.accept(array.length() > 0 ? (JSONObject) array.get(pick) : null);
 	}
