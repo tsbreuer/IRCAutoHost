@@ -18,8 +18,8 @@ class RateLimitedFlusher extends Thread {
 	public void run() {
 		try {
 			while (true) {
+				synchronized (m_client.getChannels()) {
 				Iterator<RateLimitedChannel> it = m_client.getChannels().values().iterator();
-				synchronized (it) {
 					while (it.hasNext()) {
 						RateLimitedChannel limiter = it.next();
 						String line = limiter.poll();
