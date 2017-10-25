@@ -17,11 +17,9 @@ class RateLimitedFlusher extends Thread {
 
 	@Override
 	public void run() {
-
 		while (true) {
 			try {
-				Map<String, RateLimitedChannel> channels = m_client.getChannels();
-					Iterator<RateLimitedChannel> it = channels.values().iterator();
+					Iterator<RateLimitedChannel> it = m_client.getChannels().values().iterator();
 					synchronized (it) {
 					while (it.hasNext()) {
 						RateLimitedChannel limiter = it.next();

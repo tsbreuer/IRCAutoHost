@@ -248,6 +248,7 @@ public class IRCBot {
 				if (lobby.channel.equalsIgnoreCase("#mp_" + channelded.group(2))) {
 					lobby.timer.stopTimer();
 					removeLobby(lobby);
+					lobby = null;
 				}
 			}
 			if (m_permanentLobbies.containsKey("#mp_" + channelded.group(2))) {
@@ -257,6 +258,7 @@ public class IRCBot {
 				m_permanentLobbies.remove("#mp_" + channelded.group(2));
 				createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName, lobby.OPLobby,
 						true);
+				lobby = null;
 			}
 		}
 		
@@ -791,6 +793,7 @@ public class IRCBot {
 					String modsString = modsFlag.toString();
 					foundMap = true;
 					lt.ekgame.beatmap_analyzer.beatmap.Beatmap ppcalc = null;
+					BeatmapParser parser = new BeatmapParser();
 					try {
 						RequestConfig Requestconfig = RequestConfig.custom().setSocketTimeout(10 * (int) SECOND)
 								.setConnectTimeout(10 * (int) SECOND).setConnectionRequestTimeout(10 * (int) SECOND)
@@ -801,7 +804,6 @@ public class IRCBot {
 						HttpGet requestGet = new HttpGet(uriB);
 						HttpResponse resp = httpC.execute(requestGet);
 						InputStream input = resp.getEntity().getContent();
-						BeatmapParser parser = new BeatmapParser();
 						ppcalc = parser.parse(input);
 						if (ppcalc == null) {
 							m_client.sendMessage(lobby.channel, "Beatmap " + id + " is no longer available.");
@@ -820,9 +822,11 @@ public class IRCBot {
 									+ "/" + c50s + "/" + miss + " || Combo: (" + maxcombo + "/" + ppcalc.getMaxCombo()
 									+ ") || " + String.format("%.02f", +acc * 100) + "% || PP: "
 									+ String.format("%.02f", pp) + " ");
+					ppcalc = null;
+					parser=null;
+					System.gc();
 				}
 			}
-
 			if (!foundMap) {
 				m_client.sendMessage(lobby.channel, user + " You didnt play (or pass) last beatmap!");
 			}
@@ -898,6 +902,7 @@ public class IRCBot {
 			str[1] = ssHIDDEN;
 			str[2] = ssHR;
 			str[3] = ssHDHR;
+			parser=null;
 			cbp=null;
 			cbp1=cbp2=cbp3=cbp4=null;
 			perf=perf2=perf3=perf4=null;
@@ -905,6 +910,9 @@ public class IRCBot {
 			e.printStackTrace();
 			Matcher error = RegexUtils.matcher("Couldn't find required \"General\" tag found", e.getMessage());
 			m_client.sendMessage(lobby.channel, "Error Parsing beatmap");
+			System.out.println(bm.id);
+			bm = null;
+			System.gc();
 			if (error.matches()) {
 				throw new BrokenBeatmap("broken-tag");
 			}
@@ -1278,6 +1286,7 @@ public class IRCBot {
 								+ String.format("%.02f", pplife.ppvalues[2]) + "pp || " + md + "HDHR: "
 								+ String.format("%.02f", pplife.ppvalues[3]) + "pp");
 			}
+		lobby.timer.resetTimer();
 		lobby.beatmapPlayed.add(next);
 		pplife = null;
 	}

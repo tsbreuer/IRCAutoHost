@@ -398,6 +398,7 @@ public class ChannelMessageHandler {
 			break;
 		case "timerstatus":
 			handleTimerStatus(lobby,sender);
+			break;
 		case "keys":
 			handleKeys(lobby, sender, message);
 			break;
@@ -759,7 +760,10 @@ public class ChannelMessageHandler {
 					beatmap.difficulty_ar = 4.66666 + 0.6666 * beatmap.difficulty_ar;
 					beatmap.difficulty_od = cbp.getDifficultySettings().getOD();
 					beatmap.difficulty_hp = cbp.getDifficultySettings().getHP();
-
+					perf = null;
+					diff= null;
+					cbp = null;
+					parser = null;
 				} catch (IOException | URISyntaxException | BeatmapException e) {
 					e.printStackTrace();
 					m_client.sendMessage(lobby.channel, "Error Parsing beatmap. Please try again.");
@@ -832,7 +836,6 @@ public class ChannelMessageHandler {
 					}
 				}
 				m_bot.addBeatmap(lobby, beatmap);
-
 			});
 		} catch (Exception e) {
 			e.printStackTrace();
