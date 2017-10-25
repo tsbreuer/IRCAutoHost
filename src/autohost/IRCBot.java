@@ -56,18 +56,18 @@ public class IRCBot {
 	private Config m_config;
 	private boolean m_shouldStop;
 	
-	private Map<String, Lobby> m_lobbies = new HashMap<>();
-	private Queue<Lobby> m_deadLobbies = new LinkedList<>();
-	private Map<String, LobbyChecker> m_permanentLobbies = new HashMap<>();
+	private static Map<String, Lobby> m_lobbies = new HashMap<>();
+	private static Queue<Lobby> m_deadLobbies = new LinkedList<>();
+	private static Map<String, LobbyChecker> m_permanentLobbies = new HashMap<>();
 	// Every single IRC client i tried fails, so i decided to make my own with
 	// blackjack & hookers.
 	// Blackjack
 	// Hookers
-	public Queue<Lobby> LobbyCreation = new LinkedList<>();
+	public static Queue<Lobby> LobbyCreation = new LinkedList<>();
 
 	public AutoHost autohost;
-	public HashBiMap<Integer, String> usernames = HashBiMap.create();
-	public HashBiMap<Integer, User> userDB = HashBiMap.create();
+	public static HashBiMap<Integer, String> usernames = HashBiMap.create();
+	public static HashBiMap<Integer, User> userDB = HashBiMap.create();
 	
 	// This is the reconnection data, just info i store for checking if Bancho
 	// went RIP
@@ -898,6 +898,9 @@ public class IRCBot {
 			str[1] = ssHIDDEN;
 			str[2] = ssHR;
 			str[3] = ssHDHR;
+			cbp=null;
+			cbp1=cbp2=cbp3=cbp4=null;
+			perf=perf2=perf3=perf4=null;
 		} catch (IOException | URISyntaxException | BeatmapException e) {
 			e.printStackTrace();
 			Matcher error = RegexUtils.matcher("Couldn't find required \"General\" tag found", e.getMessage());
@@ -908,6 +911,7 @@ public class IRCBot {
 			else
 			return null;
 		}
+		
 		bm.setpptab(str);
 		return bm;
 	}
@@ -939,8 +943,10 @@ public class IRCBot {
 						if (e.getMessage().equals("broken-tag")) {
 							m_client.sendMessage(lobby.channel, "Beatmap has no 'general' tag. Is it broken?");
 						}
+						bm = null;
 						return;
 					}
+					System.gc();
 					
 					if (bm == null) {
 						if (!lobby.type.equals("2")) {
@@ -987,6 +993,7 @@ public class IRCBot {
 					}
 
 					changeBeatmap(lobby, beatmap);
+					bm = null;
 				});
 			} catch (SocketTimeoutException | JSONException e) {
 				if (e.getClass().equals(SocketTimeoutException.class)) {
@@ -1244,8 +1251,10 @@ public class IRCBot {
 		catch (BrokenBeatmap e) {
 			if (e.getMessage().equals("broken-tag")) {
 				m_client.sendMessage(lobby.channel, "Beatmap has no 'general' tag. Is it broken?");
+				pplife = null;
 			}
 		}
+		System.gc();
 		if (pplife == null) {
 			if (!lobby.type.equals("2")) {
 				m_client.sendMessage(lobby.channel, "Beatmap was unable to be analyzed. Does it exist? Skipping");
@@ -1270,6 +1279,7 @@ public class IRCBot {
 								+ String.format("%.02f", pplife.ppvalues[3]) + "pp");
 			}
 		lobby.beatmapPlayed.add(next);
+		pplife = null;
 	}
 
 	public void nextbeatmap(Lobby lobby) {
