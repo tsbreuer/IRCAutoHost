@@ -13,8 +13,6 @@ import autohost.util.Slot;
 import lt.ekgame.beatmap_analyzer.difficulty.Difficulty;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapException;
 import lt.ekgame.beatmap_analyzer.parser.BeatmapParser;
-import lt.ekgame.beatmap_analyzer.performance.Performance;
-import lt.ekgame.beatmap_analyzer.performance.scores.Score;
 import lt.ekgame.beatmap_analyzer.utils.Mod;
 import lt.ekgame.beatmap_analyzer.utils.Mods;
 import org.apache.http.HttpResponse;
@@ -156,14 +154,13 @@ public class ChannelMessageHandler {
 
 		// Slot info on players... generally should be empty on start.. but
 		// who knows.
-		// :Slot 1 Ready https://osu.ppy.sh/u/711080 HyPeX
-		// :Slot 2 Not Ready https://osu.ppy.sh/u/6435456 Saerph
+		// Slot 1 Ready https://osu.ppy.sh/u/711080 HyPeX
 		// Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX [Hidden]
-		// Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX [HardRock]
-		// :Slot 1 Not Ready https://osu.ppy.sh/u/711080 HyPeX
-		// Slot 5 Ready https://osu.ppy.sh/u/10494710 Fimwick [Hidden, HardRock]
-		// TODO: Document these groups.
-		// Have to manually parse the regex to figure out wtf group 5 is.
+		// Regex documentation:
+		// Group 1: Slot number | 2: Whitespaces betwen slot and status | 3:
+		// Ready/Status
+		// 4: UserID | 5: User Name | 6: Entire [Mod] including brackets
+		// 7: First '[' | 8: Mods alone 'Hidden,Hardrock' | 9: Second ']'
 		Matcher sM = RegexUtils.matcher(
 				"^Slot (\\d+)(\\s+){1,2}(.+) https://osu\\.ppy\\.sh/u/(\\d+) (.+?)(?=( *$| +(\\[)([^\\[\\]]+)?(\\])?)$)",
 				message);
@@ -266,6 +263,8 @@ public class ChannelMessageHandler {
 					m_bot.removeLobby(lobby);
 				}
 			}
+			if (lobby.requests.containsKey(leftMatcher.group(1)))
+				lobby.requests.remove(leftMatcher.group(1));
 			return;
 		}
 
@@ -283,11 +282,6 @@ public class ChannelMessageHandler {
 		}
 
 		if (message.equalsIgnoreCase("The match has finished!")) {
-			// Chech for player scores -- TODO
-			// TODO: At the end of the match, the score isn't always reported
-			// immediately.
-			// This causes people to be kicked super often. Find a way to fix
-			// this.
 			for (Slot player : lobby.slots.values()) {
 				if (!lobby.scores.containsKey(player.name)) {
 					m_bot.addAFK(lobby, player.name);
@@ -297,13 +291,6 @@ public class ChannelMessageHandler {
 			}
 			m_bot.nextbeatmap(lobby);
 			lobby.timer.continueTimer();
-			/*
-			 * Integer orderedScores[] = new Integer[(lobby.LobbySize - 1)];
-			 * orderedScores = orderScores(lobby); for (int i = 0; i < 3; i++) {
-			 * String player = lobby.scores.get(orderedScores[i]);
-			 * m_client.sendMessage(lobby.channel, player + " finished " + (i +
-			 * 1) + "!"); }
-			 */
 			return;
 		}
 
@@ -371,7 +358,6 @@ public class ChannelMessageHandler {
 
 	private void handleCommands(Lobby lobby, String sender, String message) {
 		message = message.trim().toLowerCase();
-		// --TODO
 		// Player is playing, not AFK.
 		m_bot.removeAFK(lobby, sender);
 
@@ -397,7 +383,7 @@ public class ChannelMessageHandler {
 			handleSkip(lobby, sender);
 			break;
 		case "timerstatus":
-			handleTimerStatus(lobby,sender);
+			handleTimerStatus(lobby, sender);
 			break;
 		case "keys":
 			handleKeys(lobby, sender, message);
@@ -513,8 +499,10 @@ public class ChannelMessageHandler {
 	}
 
 	private void handleTimerStatus(Lobby lobby, String sender) {
-		m_client.sendMessage(lobby.channel, "Time passed since start: "+(System.currentTimeMillis() - ((lobby.timer.startingTime - lobby.timer.startAfter) - 200)));
-		m_client.sendMessage(lobby.channel, "Time left for start: "+(lobby.timer.startingTime - System.currentTimeMillis()));
+		m_client.sendMessage(lobby.channel, "Time passed since start: "
+				+ (System.currentTimeMillis() - ((lobby.timer.startingTime - lobby.timer.startAfter) - 200)));
+		m_client.sendMessage(lobby.channel,
+				"Time left for start: " + (lobby.timer.startingTime - System.currentTimeMillis()));
 	}
 
 	private void handleKeys(Lobby lobby, String sender, String message) {
@@ -539,7 +527,7 @@ public class ChannelMessageHandler {
 			}
 		}
 	}
-	
+
 	private void handleRetryForNewMap(Lobby lobby, String sender) {
 		if (!lobby.retryForMap) {
 			m_client.sendMessage(sender, "The lobby didnt have an issue with the random? Not registered.");
@@ -567,11 +555,9 @@ public class ChannelMessageHandler {
 			m_client.sendMessage(lobby.channel, sender + " sorry, beatmap requesting is currently disabled.");
 			return;
 		}
-		for (Beatmap beatmap : lobby.beatmapQueue) {
-			if (m_bot.hasAlreadyRequested(lobby, sender)) {
-				m_client.sendMessage(lobby.channel, sender + " you have already requested a beatmap!");
-				return;
-			}
+		if (m_bot.hasAlreadyRequested(lobby, sender)) {
+			m_client.sendMessage(lobby.channel, sender + " you have already requested a beatmap!");
+			return;
 		}
 		int id = 0;
 		Matcher mapR = RegexUtils.matcher("add (\\d+)", message);
@@ -613,7 +599,8 @@ public class ChannelMessageHandler {
 				} catch (JSONException e) {
 					e.printStackTrace();
 				} catch (BrokenBeatmap e) {
-					m_client.sendMessage(lobby.channel,sender+ " this beatmap has invalid attributes. This may be due to being a broken beatmap. Avoiding.");
+					m_client.sendMessage(lobby.channel, sender
+							+ " this beatmap has invalid attributes. This may be due to being a broken beatmap. Avoiding.");
 					return;
 				}
 				beatmap.RequestedBy = m_bot.getId(sender);
@@ -688,12 +675,11 @@ public class ChannelMessageHandler {
 					return;
 				}
 				/*
-				 * if (mapR.group(2) != null) { String modString =
-				 * mapR.group(2); String[] mods = modString.split(" "); for
-				 * (String arg : mods) { if (arg.equalsIgnoreCase("DT"))
-				 * beatmap.DT = true; else if (arg.equalsIgnoreCase("NC"))
-				 * beatmap.NC = true; else if (arg.equalsIgnoreCase("HT"))
-				 * beatmap.HT = true; } }
+				 * if (mapR.group(2) != null) { String modString = mapR.group(2); String[] mods
+				 * = modString.split(" "); for (String arg : mods) { if
+				 * (arg.equalsIgnoreCase("DT")) beatmap.DT = true; else if
+				 * (arg.equalsIgnoreCase("NC")) beatmap.NC = true; else if
+				 * (arg.equalsIgnoreCase("HT")) beatmap.HT = true; } }
 				 */
 				m_bot.addBeatmap(lobby, beatmap);
 
@@ -754,14 +740,11 @@ public class ChannelMessageHandler {
 					lt.ekgame.beatmap_analyzer.beatmap.Beatmap cbp = parser.parse(content);
 
 					Difficulty diff = cbp.getDifficulty(new Mods(Mod.DOUBLE_TIME));
-					Score ss = Score.of(cbp).build();
-					Performance perf = diff.getPerformance(ss);
 					beatmap.difficulty = diff.getStars();
 					beatmap.difficulty_ar = 4.66666 + 0.6666 * beatmap.difficulty_ar;
 					beatmap.difficulty_od = cbp.getDifficultySettings().getOD();
 					beatmap.difficulty_hp = cbp.getDifficultySettings().getHP();
-					perf = null;
-					diff= null;
+					diff = null;
 					cbp = null;
 					parser = null;
 				} catch (IOException | URISyntaxException | BeatmapException e) {
@@ -863,11 +846,10 @@ public class ChannelMessageHandler {
 						m_bot.start(lobby);
 						return;
 					}
-				lobby.timer.starting = true;
-				lobby.timer.startingTime =  System.currentTimeMillis();
-				}
-				else {
-				m_bot.start(lobby);
+					lobby.timer.starting = true;
+					lobby.timer.startingTime = System.currentTimeMillis();
+				} else {
+					m_bot.start(lobby);
 				}
 			}
 		}
@@ -892,8 +874,6 @@ public class ChannelMessageHandler {
 	}
 
 	private void handleInfo(Lobby lobby) {
-		// TODO: Maybe whisper this to the player, so we don't spam the multi
-		// chat.
 		m_client.sendMessage(lobby.channel, "This is an in-development IRC version of autohost developed by HyPeX. "
 				+ "Do !commands to know them ;) " + "[https://discord.gg/UDabf2y Discord] "
 				+ "[https://www.reddit.com/r/osugame/comments/67u0k9/autohost_bot_is_finally_ready_for_public_usage/ Reddit Thread]");
@@ -947,8 +927,8 @@ public class ChannelMessageHandler {
 		if (diffM.matches()) {
 			double maxDiff = Double.valueOf(diffM.group(1));
 			if (lobby.minDifficulty != null && maxDiff <= lobby.minDifficulty) {
-				m_client.sendMessage(lobby.channel, "Max diff must be greater than min diff, which is "
-						+ lobby.minDifficulty);
+				m_client.sendMessage(lobby.channel,
+						"Max diff must be greater than min diff, which is " + lobby.minDifficulty);
 			} else {
 				lobby.maxDifficulty = maxDiff;
 				m_client.sendMessage(lobby.channel, "Max difficulty now is " + diffM.group(1));
@@ -1134,8 +1114,8 @@ public class ChannelMessageHandler {
 		if (diffM.matches()) {
 			double minDiff = Double.valueOf(diffM.group(1));
 			if (lobby.maxDifficulty != null && minDiff >= lobby.maxDifficulty) {
-				m_client.sendMessage(lobby.channel, "Min diff must be less than max diff, which is "
-						+ lobby.maxDifficulty);
+				m_client.sendMessage(lobby.channel,
+						"Min diff must be less than max diff, which is " + lobby.maxDifficulty);
 			} else {
 				lobby.minDifficulty = minDiff;
 				m_client.sendMessage(lobby.channel, "New minimum difficulty is " + diffM.group(1));
@@ -1300,20 +1280,24 @@ public class ChannelMessageHandler {
 		}
 		String mapname = null;
 		String author = null;
+		if (message.split(" ").length < 2) {
+			m_client.sendMessage(lobby.channel, sender + " Please include a name!");
+			return;
+		}
 		Matcher mapsearchM = RegexUtils.matcher("searchsong ([^|]+)(\\ \\|\\ )?([^|]+)", message);
 		if (mapsearchM.matches()) {
 			mapname = mapsearchM.group(1);
-		}
-		if (mapsearchM.groupCount() == 3 && mapsearchM.group(2) != null & mapsearchM.group(3) != null) {
-			if (!mapsearchM.group(2).equalsIgnoreCase("") & !mapsearchM.group(3).equalsIgnoreCase("")) {
-				author = mapsearchM.group(3);
+			if (mapsearchM.groupCount() == 3 && mapsearchM.group(2) != null & mapsearchM.group(3) != null) {
+				if (!mapsearchM.group(2).equalsIgnoreCase("") & !mapsearchM.group(3).equalsIgnoreCase("")) {
+					author = mapsearchM.group(3);
+				}
 			}
-		}
-		if (mapname == null) {
-			m_client.sendMessage(lobby.channel,
-					sender + " Incorrect Arguments for !searchsong. Please use the beatmap title. !searchsong [title]");
-		} else {
-			m_bot.searchBeatmap(mapname, lobby, sender, author);
+			if (mapname == null) {
+				m_client.sendMessage(lobby.channel, sender
+						+ " Incorrect Arguments for !searchsong. Please use the beatmap title. !searchsong [title]");
+			} else {
+				m_bot.searchBeatmap(mapname, lobby, sender, author);
+			}
 		}
 	}
 }

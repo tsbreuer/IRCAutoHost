@@ -12,9 +12,7 @@ public class LobbyChecker extends Thread {
 	public Lobby lobby;
 	public boolean stopped = false;
 	public long    startTime;
-	private long prevTime = System.currentTimeMillis();
-	private boolean added = false;
-
+	
 	public LobbyChecker(IRCBot bot, Lobby lobby) {
 		m_bot = bot;
 		this.lobby = lobby;
@@ -35,7 +33,6 @@ public class LobbyChecker extends Thread {
 				sendMessage("!mp settings");
 			}
 			ThreadUtils.sleepQuietly(SECOND);
-			prevTime = currTime;
 		}
 	}
 

@@ -5,7 +5,9 @@ import java.util.HashMap;
 public class User {
 	
 	private HashMap<Integer,String> c_roomList;
+	@SuppressWarnings("unused")
 	private String name;
+	@SuppressWarnings("unused")
 	private int id;
 	
 	public User(String name, int id) {

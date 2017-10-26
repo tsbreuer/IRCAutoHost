@@ -51,13 +51,12 @@ public class IRCBot {
 
 	public static int lobbyCount = 0;
 	public PrintWriter m_writer;
-	
+
 	private final IRCClient m_client;
 	private Config m_config;
 	private boolean m_shouldStop;
-	
+
 	private static Map<String, Lobby> m_lobbies = new HashMap<>();
-	private static Queue<Lobby> m_deadLobbies = new LinkedList<>();
 	private static Map<String, LobbyChecker> m_permanentLobbies = new HashMap<>();
 	// Every single IRC client i tried fails, so i decided to make my own with
 	// blackjack & hookers.
@@ -68,14 +67,13 @@ public class IRCBot {
 	public AutoHost autohost;
 	public static HashBiMap<Integer, String> usernames = HashBiMap.create();
 	public static HashBiMap<Integer, User> userDB = HashBiMap.create();
-	
+
 	// This is the reconnection data, just info i store for checking if Bancho
 	// went RIP
 	private ReconnectTimer m_reconnectTimer;
 
 	// Main code
 
-	@SuppressWarnings("static-access")
 	public IRCBot(AutoHost autohost, Config config) throws IOException {
 		// Define all settings. Meh.
 		this.autohost = autohost;
@@ -104,7 +102,6 @@ public class IRCBot {
 		m_client.setDelay(config.rate);
 		System.out.println("Reconnect lobbies: " + Lobbies.size());
 		IRCBot.m_lobbies = Lobbies;
-		m_deadLobbies = deadLobbies;
 		m_permanentLobbies = permanentLobbies;
 		IRCBot.usernames = usernames;
 		IRCBot.LobbyCreation = LobbyCreation;
@@ -123,29 +120,25 @@ public class IRCBot {
 
 	public User getUser(int id) {
 		if (!userDB.containsKey(id)) {
-			userDB.put(id, new User(getUsername(id),id));
+			userDB.put(id, new User(getUsername(id), id));
 		}
 		return userDB.get(id);
 	}
-	
+
 	public User getUser(String name) {
 		int id = getId(name);
 		if (!userDB.containsKey(id)) {
-			userDB.put(id, new User(name,id));
+			userDB.put(id, new User(name, id));
 		}
 		return userDB.get(id);
 	}
-	
+
 	public Map<String, Lobby> getLobbies() {
 		return m_lobbies;
 	}
 
 	public Map<String, LobbyChecker> getpermanentLobbies() {
 		return m_permanentLobbies;
-	}
-
-	public Queue<Lobby> getDeadLobbies() {
-		return m_deadLobbies;
 	}
 
 	public void connect() {
@@ -261,10 +254,12 @@ public class IRCBot {
 				lobby = null;
 			}
 		}
-		
-		//RECV(Mon Oct 23 16:14:35 ART 2017): :BanchoBot!cho@ppy.sh PRIVMSG AutoHost :
-		//You cannot create any more tournament matches. Please close any previous tournament matches you have open.
-		Pattern staph = Pattern.compile(":BanchoBot!cho@ppy.sh PRIVMSG AutoHost :You cannot create any more tournament matches. Please close any previous tournament matches you have open.");
+
+		// RECV(Mon Oct 23 16:14:35 ART 2017): :BanchoBot!cho@ppy.sh PRIVMSG AutoHost :
+		// You cannot create any more tournament matches. Please close any previous
+		// tournament matches you have open.
+		Pattern staph = Pattern.compile(
+				":BanchoBot!cho@ppy.sh PRIVMSG AutoHost :You cannot create any more tournament matches. Please close any previous tournament matches you have open.");
 		Matcher staphM = staph.matcher(line);
 		if (staphM.matches()) {
 			if (staphM.group(1).equalsIgnoreCase(m_client.getUser())) {
@@ -274,8 +269,7 @@ public class IRCBot {
 				return;
 			}
 		}
-		
-		
+
 		Pattern channel = Pattern.compile(":(.+)!cho@ppy.sh PRIVMSG (.+) :(.+)");
 		Matcher channelmatch = channel.matcher(line);
 		if (channelmatch.find()) {
@@ -306,8 +300,6 @@ public class IRCBot {
 			}
 		}
 
-	
-		
 		// :AutoHost!cho@ppy.sh PART :#mp_35457515
 		Pattern part = Pattern.compile(":(.+)!cho@ppy.sh PART :(.+)");
 		Matcher partM = part.matcher(line);
@@ -372,11 +364,11 @@ public class IRCBot {
 			if (op != creatorID)
 				lobby.OPs.add(op);
 		}
-		autohost.irc.lobbyCount++;
-		lobby.lobbyNumber = autohost.irc.lobbyCount;
+		IRCBot.lobbyCount++;
+		lobby.lobbyNumber = IRCBot.lobbyCount;
 		lobby.OPs.add(creatorID);
-		autohost.irc.lobbyCount++;
-		lobby.lobbyNumber = autohost.irc.lobbyCount;
+		IRCBot.lobbyCount++;
+		lobby.lobbyNumber = IRCBot.lobbyCount;
 		m_client.sendMessage("BanchoBot", "!mp make " + name);
 	}
 
@@ -405,19 +397,20 @@ public class IRCBot {
 			if (op != creatorID)
 				lobby.OPs.add(op);
 		}
-		autohost.irc.lobbyCount++;
-		lobby.lobbyNumber = autohost.irc.lobbyCount;
+		IRCBot.lobbyCount++;
+		lobby.lobbyNumber = IRCBot.lobbyCount;
 		lobby.OPs.add(creatorID);
 		m_client.write("JOIN #mp_" + channel);
 		m_client.sendMessage("#mp_" + channel, "Bot reconnect requested to this lobby by " + creator);
 		m_client.sendMessage("#mp_" + channel,
 				creator + " All settings will be set to default, so please re-set them.");
 	}
-	
+
 	public void noMore(String lobbyChannel) {
 		Lobby lobby = LobbyCreation.poll();
 		if (lobby != null) {
-			m_client.sendMessage(lobby.creatorName, "Sorry, autohost is currently at the maximum ammount of concurrent lobbies possible. Your lobby creation was cancelled.");
+			m_client.sendMessage(lobby.creatorName,
+					"Sorry, autohost is currently at the maximum ammount of concurrent lobbies possible. Your lobby creation was cancelled.");
 		}
 		if (!LobbyCreation.isEmpty()) {
 			String name = LobbyCreation.peek().name;
@@ -506,7 +499,6 @@ public class IRCBot {
 	public void removeLobby(Lobby lobby) {
 		synchronized (m_lobbies) {
 			if (m_lobbies.containsKey(lobby.channel)) {
-				m_deadLobbies.add(m_lobbies.get(lobby.channel));
 				m_lobbies.remove(lobby.channel);
 				lobby.timer.stopTimer();
 			}
@@ -766,7 +758,6 @@ public class IRCBot {
 			InputStream content = response.getEntity().getContent();
 			String stringContent = IOUtils.toString(content, "UTF-8");
 			JSONArray array = new JSONArray(stringContent);
-			int totalMaps = lobby.beatmapPlayed.size();
 			int lastBeatmap = 0;
 			if (lobby.previousBeatmap == null) {
 				m_client.sendMessage(lobby.channel, user + " No beatmap was played yet!");
@@ -779,14 +770,14 @@ public class IRCBot {
 				JSONObject beatmap = new JSONObject(str);
 				int id = beatmap.getInt("beatmap_id");
 				if (id == lastBeatmap) {
-					int score = beatmap.getInt("score");
 					int maxcombo = beatmap.getInt("maxcombo");
 					int c50s = beatmap.getInt("count50");
 					int c100s = beatmap.getInt("count100");
 					int c300s = beatmap.getInt("count300");
 					int miss = beatmap.getInt("countmiss");
 					int mods = beatmap.getInt("enabled_mods");
-					int totalhits = c300s + c100s + c50s + miss;
+					int totalhits;
+					totalhits = c300s + c100s + c50s + miss;
 					double acc = ((c300s * 6 + c100s * 2 + c50s) / ((double) totalhits * 6));
 					String rank = beatmap.getString("rank");
 					Mods modsFlag = Mods.parse(mods);
@@ -794,6 +785,7 @@ public class IRCBot {
 					foundMap = true;
 					lt.ekgame.beatmap_analyzer.beatmap.Beatmap ppcalc = null;
 					BeatmapParser parser = new BeatmapParser();
+
 					try {
 						RequestConfig Requestconfig = RequestConfig.custom().setSocketTimeout(10 * (int) SECOND)
 								.setConnectTimeout(10 * (int) SECOND).setConnectionRequestTimeout(10 * (int) SECOND)
@@ -823,7 +815,8 @@ public class IRCBot {
 									+ ") || " + String.format("%.02f", +acc * 100) + "% || PP: "
 									+ String.format("%.02f", pp) + " ");
 					ppcalc = null;
-					parser=null;
+					parser = null;
+					beatmap = null;
 					System.gc();
 				}
 			}
@@ -854,6 +847,9 @@ public class IRCBot {
 			HttpGet request = new HttpGet(uri);
 			HttpResponse response = httpClient.execute(request);
 			InputStream content = response.getEntity().getContent();
+			if (content.toString().length() < 1) {
+				throw (new BrokenBeatmap("doesnt-exist"));
+			}
 			// String stringContent = IOUtils.toString(content, "UTF-8");
 			BeatmapParser parser = new BeatmapParser();
 			lt.ekgame.beatmap_analyzer.beatmap.Beatmap cbp = parser.parse(content);
@@ -861,7 +857,7 @@ public class IRCBot {
 				m_client.sendMessage(lobby.channel, "Beatmap " + beatmapid + " is no longer available.");
 			}
 			Score ss = Score.of(cbp).combo(cbp.getMaxCombo()).build();
-			//lobby.beatmaps.put(beatmapid, cbp);
+			// lobby.beatmaps.put(beatmapid, cbp);
 			Difficulty cbp1 = null;
 			Difficulty cbp2 = null;
 			Difficulty cbp3 = null;
@@ -902,36 +898,38 @@ public class IRCBot {
 			str[1] = ssHIDDEN;
 			str[2] = ssHR;
 			str[3] = ssHDHR;
-			parser=null;
-			cbp=null;
-			cbp1=cbp2=cbp3=cbp4=null;
-			perf=perf2=perf3=perf4=null;
-		} catch (IOException | URISyntaxException | BeatmapException e) {
+			parser = null;
+			cbp = null;
+			cbp1 = cbp2 = cbp3 = cbp4 = null;
+			perf = perf2 = perf3 = perf4 = null;
+		} catch (IOException | URISyntaxException | BeatmapException | BrokenBeatmap e) {
 			e.printStackTrace();
-			Matcher error = RegexUtils.matcher("Couldn't find required \"General\" tag found", e.getMessage());
-			m_client.sendMessage(lobby.channel, "Error Parsing beatmap");
 			System.out.println(bm.id);
 			bm = null;
 			System.gc();
+			if (e.getClass().equals(BrokenBeatmap.class)) {
+				throw (new BrokenBeatmap("doesnt-exist"));
+			}
+			Matcher error = RegexUtils.matcher("Couldn't find required \"General\" tag found", e.getMessage());
+			m_client.sendMessage(lobby.channel, "Error Parsing beatmap");
 			if (error.matches()) {
 				throw new BrokenBeatmap("broken-tag");
-			}
-			else
-			return null;
+			} else
+				return null;
 		}
-		
+
 		bm.setpptab(str);
 		return bm;
 	}
 
 	public void getRandomBeatmap(Lobby lobby) throws BrokenBeatmap {
-		Beatmap returnBeatmap = new Beatmap();
 		try {
 			try {
 				getRandomWithinSettings(lobby, (obj) -> {
 					if (obj == null) {
 						m_client.sendMessage(lobby.channel, "An error ocurred while searching for a random beatmap.");
-						m_client.sendMessage(lobby.channel, "Maybe no matches for current lobby settings? Anyone do '!retry' to try again.");
+						m_client.sendMessage(lobby.channel,
+								"Maybe no matches for current lobby settings? Anyone do '!retry' to try again.");
 						lobby.retryForMap = true;
 						return;
 					}
@@ -945,17 +943,19 @@ public class IRCBot {
 					Beatmap beatmap = JSONUtils.silentGetBeatmap(obj, true);
 					beatmapFile bm = null;
 					try {
-					bm = getPeppyPoints(beatmap.beatmap_id, lobby);
-					}
-					catch (BrokenBeatmap e) {
+						bm = getPeppyPoints(beatmap.beatmap_id, lobby);
+					} catch (BrokenBeatmap e) {
 						if (e.getMessage().equals("broken-tag")) {
 							m_client.sendMessage(lobby.channel, "Beatmap has no 'general' tag. Is it broken?");
+						} else if (e.getMessage().equals("doesnt-exist")) {
+							m_client.sendMessage(lobby.channel,
+									"Beatmap no longer exists. Retrying for a different one...");
 						}
 						bm = null;
 						return;
 					}
 					System.gc();
-					
+
 					if (bm == null) {
 						if (!lobby.type.equals("2")) {
 							m_client.sendMessage(lobby.channel, "An error ocurred while loading the random beatmap.");
@@ -1005,10 +1005,12 @@ public class IRCBot {
 				});
 			} catch (SocketTimeoutException | JSONException e) {
 				if (e.getClass().equals(SocketTimeoutException.class)) {
-				m_client.sendMessage(lobby.channel, "We're getting timed out. Is [http://osusearch.com osusearch] down? If so, use !add command.");
-				throw new BrokenBeatmap("timed-out");}
-				else if (e.getClass().equals(JSONException.class)) {
-				m_client.sendMessage(lobby.channel, "There was an error parsing the JSON from [http://osusearch.com osusearch]. Please do !retry to attempt again.");
+					m_client.sendMessage(lobby.channel,
+							"We're getting timed out. Is [http://osusearch.com osusearch] down? If so, use !add command.");
+					throw new BrokenBeatmap("timed-out");
+				} else if (e.getClass().equals(JSONException.class)) {
+					m_client.sendMessage(lobby.channel,
+							"There was an error parsing the JSON from [http://osusearch.com osusearch]. Please do !retry to attempt again.");
 				}
 			}
 		} catch (IOException | JSONException | URISyntaxException e) {
@@ -1141,41 +1143,55 @@ public class IRCBot {
 			}
 			;
 			if (size > 1) {
-				if (size > 5) {
+				String returnMaps = "";
+				Request askForWhich = new Request();
+				for (int i = 0; i < Info.length(); i++) {
+					String str = "" + Info.get(i);
+					JSONObject beatmap = new JSONObject(str);
+					Beatmap beatmapObj = new Beatmap(beatmap, true);
+					int id = beatmap.getInt("beatmap_id");
+					String artist = beatmap.getString("artist");
+					String title = beatmap.getString("title");
+					String difficulty = beatmap.getString("difficulty_name");
+					String result = artist + " - " + title + " (" + difficulty + ")";
+					String urllink = "http://osu.ppy.sh/b/" + id;
+					returnMaps = returnMaps + " || [" + urllink + " " + result + "]"; // returnmaps
+																						// is
+																						// dead
+																						// old
+																						// code
+					askForWhich.beatmaps.put(beatmapObj.beatmap_id, beatmapObj);
+					askForWhich.bids.add(beatmapObj.beatmap_id);
+				}
+				if (askForWhich.bids.size() == 0) {
 					m_client.sendMessage(lobby.channel,
-							sender + ": " + "Found " + size + " maps, please be more precise!");
-				} else if (size < 6) {
-					String returnMaps = "";
-					Request askForWhich = new Request();
-					for (int i = 0; i < Info.length(); i++) {
-						String str = "" + Info.get(i);
-						JSONObject beatmap = new JSONObject(str);
-						Beatmap beatmapObj = new Beatmap(beatmap, true);
-						int id = beatmap.getInt("beatmap_id");
-						String artist = beatmap.getString("artist");
-						String title = beatmap.getString("title");
-						String difficulty = beatmap.getString("difficulty_name");
-						String result = artist + " - " + title + " (" + difficulty + ")";
-						String urllink = "http://osu.ppy.sh/b/" + id;
-						returnMaps = returnMaps + " || [" + urllink + " " + result + "]"; // returnmaps
-																							// is
-																							// dead
-																							// old
-																							// code
-						askForWhich.beatmaps.put(beatmapObj.beatmap_id, beatmapObj);
-						askForWhich.bids.add(beatmapObj.beatmap_id);
-					}
-					if (askForWhich.bids.size() == 0) {
-						m_client.sendMessage(lobby.channel,
-								sender + " This beatmap set doesnt have any difficulty matching the lobby's range!");
-					} else if (askForWhich.bids.size() == 1) {
-						m_client.sendMessage(lobby.channel,
-								sender + " Selecting the only matching difficulty from the linked set");
-						addBeatmap(lobby, askForWhich.beatmaps.get(askForWhich.bids.iterator().next()));
+							sender + " This beatmap set doesnt have any difficulty matching the lobby's range!");
+				} else if (askForWhich.bids.size() == 1) {
+					m_client.sendMessage(lobby.channel,
+							sender + " Selecting the only matching difficulty from the linked set");
+					addBeatmap(lobby, askForWhich.beatmaps.get(askForWhich.bids.iterator().next()));
+				} else {
+					if (askForWhich.bids.size() > 4) {
+						lobby.requests.put(sender, askForWhich);
+						m_client.sendMessage(lobby.channel, sender+  " I'll be PMing you with all the results as to not spam the lobby.");
+						m_client.sendMessage(sender,
+								sender + " Please pick one of the following difficulties using !select [number] (In the lobby channel). | E.g. '!select 1'");
+						for (int a = 0; a < askForWhich.bids.size(); a++) {
+							m_client.sendMessage(sender, "[" + a + "] || "
+									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).artist + " - "
+									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).title + " "
+									+ "[[https://osu.ppy.sh/b/"
+									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).beatmap_id + " "
+									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).difficulty_name + "]] - "
+									+ round(askForWhich.beatmaps.get(askForWhich.bids.get(a)).difficulty, 2) + "*");
+						}
 					} else {
+						if (lobby.requests.containsKey(sender)) {
+							lobby.requests.remove(sender);
+						}
 						lobby.requests.put(sender, askForWhich);
 						m_client.sendMessage(lobby.channel,
-								sender + " Please pick one of the following difficulties using !select [number]");
+								sender + " Please pick one of the following difficulties using !select [number] | E.g. '!select 1'");
 						for (int a = 0; a < askForWhich.bids.size(); a++) {
 							m_client.sendMessage(lobby.channel, "[" + a + "] || "
 									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).artist + " - "
@@ -1255,8 +1271,7 @@ public class IRCBot {
 		beatmapFile pplife = null;
 		try {
 			pplife = getPeppyPoints(next.beatmap_id, lobby);
-		}
-		catch (BrokenBeatmap e) {
+		} catch (BrokenBeatmap e) {
 			if (e.getMessage().equals("broken-tag")) {
 				m_client.sendMessage(lobby.channel, "Beatmap has no 'general' tag. Is it broken?");
 				pplife = null;
@@ -1302,11 +1317,11 @@ public class IRCBot {
 				m_client.sendMessage(lobby.channel,
 						"Queue is empty. Selecting a random beatmap matching this lobby...");
 				try {
-				getRandomBeatmap(lobby);
-				}
-				catch (BrokenBeatmap e) {
+					getRandomBeatmap(lobby);
+				} catch (BrokenBeatmap e) {
 					if (e.getMessage().equals("timed-out")) {
-						m_client.sendMessage(lobby.channel, "Due to timed-out beatmap request, lobby is halted. Please vote skip to attempt again");
+						m_client.sendMessage(lobby.channel,
+								"Due to timed-out beatmap request, lobby is halted. Please vote skip to attempt again");
 					}
 				}
 				return;
@@ -1360,8 +1375,7 @@ public class IRCBot {
 		beatmapFile pplife = null;
 		try {
 			pplife = getPeppyPoints(next.beatmap_id, lobby);
-		}
-		catch (BrokenBeatmap e) {
+		} catch (BrokenBeatmap e) {
 			if (e.getMessage().equals("broken-tag")) {
 				m_client.sendMessage(lobby.channel, "Beatmap has no 'general' tag. Is it broken?");
 			}

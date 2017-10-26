@@ -2,7 +2,6 @@ package autohost.irc;
 
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
-import java.util.Map;
 
 import autohost.util.ThreadUtils;
 
@@ -19,8 +18,8 @@ class RateLimitedFlusher extends Thread {
 	public void run() {
 		while (true) {
 			try {
-					Iterator<RateLimitedChannel> it = m_client.getChannels().values().iterator();
-					synchronized (it) {
+				Iterator<RateLimitedChannel> it = m_client.getChannels().values().iterator();
+				synchronized (it) {
 					while (it.hasNext()) {
 						RateLimitedChannel limiter = it.next();
 						String line = limiter.poll();
@@ -29,6 +28,7 @@ class RateLimitedFlusher extends Thread {
 					}
 					ThreadUtils.sleepQuietly(m_delay);
 				}
+				it = null;
 			} catch (ConcurrentModificationException e) {
 				e.printStackTrace();
 			}

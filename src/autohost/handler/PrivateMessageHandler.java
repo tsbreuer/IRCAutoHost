@@ -59,12 +59,6 @@ public class PrivateMessageHandler {
 		case "globalclose":
 			handleGlobalClose(sender, message);
 			break;
-		case "recreate":
-			handleRecreate(sender);
-			break;
-		case "droplobby":
-			handleDropLobby(sender);
-			break;
 		case "reconnection":
 			handleReconnection(sender);
 			break;
@@ -169,44 +163,6 @@ public class PrivateMessageHandler {
 			}
 		} else {
 			m_client.sendMessage(sender, "Syntax error. Please use !globalclose");
-		}
-	}
-	
-	private void handleRecreate(String sender) {
-		Queue<Lobby> deadLobbies = m_bot.getDeadLobbies();
-		Iterator<Lobby> iter = deadLobbies.iterator();
-		while (iter.hasNext()) {
-			Lobby lobby = iter.next();
-			if (lobby.creatorName != null || lobby.creatorName.equals("")) {
-				if (lobby.creatorName.equalsIgnoreCase(sender)) {
-					iter.remove();
-					m_bot.createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName,
-							lobby.OPLobby);
-					m_client.sendMessage(sender, "Lobby is being created. Please wait...");
-					return;
-				}
-			} else {
-				iter.remove();
-			}
-		}
-		for (Lobby lobby : deadLobbies) {
-			if (lobby.creatorName.equalsIgnoreCase(sender)) {
-				deadLobbies.remove(lobby);
-				m_bot.createNewLobby(lobby.name, lobby.minDifficulty, lobby.maxDifficulty, lobby.creatorName,
-						lobby.OPLobby);
-				return;
-			}
-		}
-	}
-
-	private void handleDropLobby(String sender) {
-		Queue<Lobby> deadLobbies = m_bot.getDeadLobbies();
-		for (Lobby lobby : deadLobbies) {
-			if (lobby.creatorName.equalsIgnoreCase(sender)) {
-				deadLobbies.remove(lobby);
-				m_client.sendMessage(sender, "Lobby dropped. You're now able to create a new one!");
-				return;
-			}
 		}
 	}
 
@@ -323,13 +279,6 @@ public class PrivateMessageHandler {
 			for (Lobby lobby : m_bot.getLobbies().values()) {
 				if (lobby.creatorName.equalsIgnoreCase(sender)) {
 					m_client.sendMessage(sender, "You already have a live lobby!");
-					return;
-				}
-			}
-			for (Lobby lobby : m_bot.getDeadLobbies()) {
-				if (lobby.creatorName.equalsIgnoreCase(sender)) {
-					m_client.sendMessage(sender,
-							"You already have an older lobby, please do !recreate to revive it, or !droplobby to remove it from the list.");
 					return;
 				}
 			}

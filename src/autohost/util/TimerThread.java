@@ -17,6 +17,11 @@ public class TimerThread extends Thread {
 	public boolean starting = false;
 	public long startingTime = System.currentTimeMillis();
 	public boolean askedAlready= false;
+	private long min3mark;
+	private long min2mark;
+	private long min1mark;
+	private long sec10mark;
+	private long currTime;
 
 	public TimerThread(IRCBot bot, Lobby lobby) {
 		m_bot = bot;
@@ -60,17 +65,17 @@ public class TimerThread extends Thread {
 	public void run() {
 		resetTimer();
 		while (!stopped) {
-			long currTime = System.currentTimeMillis();
+			currTime = System.currentTimeMillis();
 			if (currTime-startingTime >= 1*MINUTE) {
 				askedAlready = true;
 				if (starting) {
 				m_bot.start(lobby);
 				}
 			}
-			long min3mark = startTime - 3 * MINUTE;
-			long min2mark = startTime - 2 * MINUTE;
-			long min1mark = startTime - 1 * MINUTE;
-			long sec10mark = startTime - 10 * SECOND;
+			min3mark = startTime - 3 * MINUTE;
+			min2mark = startTime - 2 * MINUTE;
+			min1mark = startTime - 1 * MINUTE;
+			sec10mark = startTime - 10 * SECOND;
 			if (currTime >= min3mark && prevTime < min3mark) {
 				sendMessage("Starting in 3 minutes. Please use !r or !ready if you're ready to start.");
 			}
