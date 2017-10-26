@@ -103,11 +103,11 @@ public class IRCBot {
 		m_client = new autohost.irc.IRCClient(config.server, 6667, config.user, config.password);
 		m_client.setDelay(config.rate);
 		System.out.println("Reconnect lobbies: " + Lobbies.size());
-		this.m_lobbies = Lobbies;
+		IRCBot.m_lobbies = Lobbies;
 		m_deadLobbies = deadLobbies;
 		m_permanentLobbies = permanentLobbies;
-		this.usernames = usernames;
-		this.LobbyCreation = LobbyCreation;
+		IRCBot.usernames = usernames;
+		IRCBot.LobbyCreation = LobbyCreation;
 		// Mods definition, ignore
 		// Connect
 		connect();
@@ -861,7 +861,7 @@ public class IRCBot {
 				m_client.sendMessage(lobby.channel, "Beatmap " + beatmapid + " is no longer available.");
 			}
 			Score ss = Score.of(cbp).combo(cbp.getMaxCombo()).build();
-			lobby.beatmaps.put(beatmapid, cbp);
+			//lobby.beatmaps.put(beatmapid, cbp);
 			Difficulty cbp1 = null;
 			Difficulty cbp2 = null;
 			Difficulty cbp3 = null;

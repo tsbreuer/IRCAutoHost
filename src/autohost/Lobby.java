@@ -52,7 +52,6 @@ public class Lobby {
 	public Boolean HalfTime = false;
 
 	public Map<Integer, Slot> slots = new HashMap<>();
-	public Map<Integer, lt.ekgame.beatmap_analyzer.beatmap.Beatmap> beatmaps = new HashMap<>();
 	public Map<String, Request> requests = new HashMap<>();
 
 	public Map<String, Integer> afk = new HashMap<>();
