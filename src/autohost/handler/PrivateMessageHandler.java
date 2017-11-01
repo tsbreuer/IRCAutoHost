@@ -50,6 +50,9 @@ public class PrivateMessageHandler {
 		case "reloadRooms":
 			handleReloadRooms(sender);
 			break;
+		case "reinvite":
+			handleReInvite(sender);
+			break;
 		case "commands":
 			handleCommands(sender);
 			break;
@@ -61,6 +64,9 @@ public class PrivateMessageHandler {
 			break;
 		case "reconnection":
 			handleReconnection(sender);
+			break;
+		case "refresh":
+			handleRefresh(sender);
 			break;
 		case "moveme":
 			handleMoveMe(sender, message);
@@ -76,6 +82,23 @@ public class PrivateMessageHandler {
 			break;
 		default:
 			m_client.sendMessage(sender, "Unrecognized Command. Please check !help, or !commands");
+		}
+	}
+
+	private void handleReInvite(String sender) {
+		for (Lobby lobby : m_bot.getLobbies().values()) {
+			if (lobby.creatorName.equals(sender)) {
+				m_client.sendMessage(lobby.channel, "!mp invite "+sender);
+				}
+		}
+	}
+
+	private void handleRefresh(String sender) {
+		for (Lobby lobby : m_bot.getLobbies().values()) {
+			if (lobby.creatorName.equals(sender)) {
+				m_client.sendMessage(lobby.channel, "!mp settings");
+				m_client.sendMessage(sender, "Sent a check to the lobby. Wait 5 seconds, and ask me to create your room again.");
+			}
 		}
 	}
 
@@ -278,7 +301,8 @@ public class PrivateMessageHandler {
 		if (!isOP) {
 			for (Lobby lobby : m_bot.getLobbies().values()) {
 				if (lobby.creatorName.equalsIgnoreCase(sender)) {
-					m_client.sendMessage(sender, "You already have a live lobby!");
+					m_client.sendMessage(sender, "You already have an alive lobby! If your lobby died but i didnt detect it, send me !refresh");
+					m_client.sendMessage(sender, "If after doing so its still alive, or you forgot your password, PM me !reinvite to get invited back in");
 					return;
 				}
 			}
@@ -291,7 +315,7 @@ public class PrivateMessageHandler {
 			double mindiff = 4;
 			double maxdiff = 5;
 			m_bot.createNewLobby(roomName, mindiff, maxdiff, sender, isOP);
-			m_client.sendMessage(sender, "Creating room, please wait 1 second and pm me !help to ask for a move");
+			m_client.sendMessage(sender, "Creating room, please wait 1 second until i invite you, or pm me !roomlist and then !move [id] to ask for an invite.");
 		} else {
 			m_client.sendMessage(sender, "Incorrect Syntax. Please use !createroom <name>");
 		}

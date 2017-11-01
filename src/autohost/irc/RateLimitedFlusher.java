@@ -26,9 +26,9 @@ class RateLimitedFlusher extends Thread {
 						if (line != null)
 							m_client.write(line);
 					}
-					ThreadUtils.sleepQuietly(m_delay);
 				}
 				it = null;
+				ThreadUtils.sleepQuietly(m_delay);
 			} catch (ConcurrentModificationException e) {
 				e.printStackTrace();
 			}

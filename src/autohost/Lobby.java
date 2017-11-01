@@ -24,8 +24,8 @@ public class Lobby {
 	public Boolean OPLobby = false;
 	public String creatorName = "";
 
-	public int maxLength = 360;
-
+	public int maxLength = 300;
+	public int minLength = 0;
 
 	public String Password = "";
 	public Boolean Playing = false;

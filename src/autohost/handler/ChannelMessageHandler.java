@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.LocalTime;
 import java.util.Map;
 import java.util.regex.Matcher;
 
@@ -469,8 +470,11 @@ public class ChannelMessageHandler {
 		case "retry":
 			handleRetryForNewMap(lobby, sender);
 			break;
-		case "duration":
-			handleDuration(lobby, sender, message);
+		case "minduration":
+			handleMinDuration(lobby, sender, message);
+			break;
+		case "maxduration":
+			handleMaxDuration(lobby, sender, message);
 			break;
 		case "hostme":
 			handleHostMe(lobby, sender);
@@ -500,9 +504,9 @@ public class ChannelMessageHandler {
 
 	private void handleTimerStatus(Lobby lobby, String sender) {
 		m_client.sendMessage(lobby.channel, "Time passed since start: "
-				+ (System.currentTimeMillis() - ((lobby.timer.startingTime - lobby.timer.startAfter) - 200)));
+				+ (System.currentTimeMillis() - ((lobby.timer.startTime - lobby.timer.startAfter) - 200)));
 		m_client.sendMessage(lobby.channel,
-				"Time left for start: " + (lobby.timer.startingTime - System.currentTimeMillis()));
+				"Time left for start: " + (lobby.timer.startTime - System.currentTimeMillis()));
 	}
 
 	private void handleKeys(Lobby lobby, String sender, String message) {
@@ -667,11 +671,18 @@ public class ChannelMessageHandler {
 					}
 				}
 				if (beatmap.total_length >= lobby.maxLength) {
-					String length = "";
 					int minutes = lobby.maxLength / 60;
-					int seconds = lobby.maxLength - (minutes * 60);
-					length = minutes + ":" + seconds;
-					m_client.sendMessage(lobby.channel, sender + " This beatmap too long! Max length is: " + length);
+					int seconds = lobby.maxLength % 60;
+					String str = String.format("%d:%02d", minutes, seconds);
+					m_client.sendMessage(lobby.channel, sender + " This beatmap too long! Max length is: " + str);
+					return;
+				}
+				
+				if (beatmap.total_length <= lobby.minLength) {
+					int minutes = lobby.minLength / 60;
+					int seconds = lobby.minLength % 60;
+					String str = String.format("%d:%02d", minutes, seconds);
+					m_client.sendMessage(lobby.channel, sender + " This beatmap too short! Min length is: " + str);
 					return;
 				}
 				/*
@@ -1198,18 +1209,39 @@ public class ChannelMessageHandler {
 		m_client.sendMessage(lobby.channel, "Toggled Date limiting. State: " + lobby.limitDate);
 	}
 
-	private void handleDuration(Lobby lobby, String sender, String message) {
+	private void handleMinDuration(Lobby lobby, String sender, String message) {
 		if (!lobby.isOP(m_bot.getId(sender)))
 			return;
 
-		Matcher yrM = RegexUtils.matcher("duration (.+)", message);
+		Matcher yrM = RegexUtils.matcher("minduration (.+)", message);
 		if (yrM.matches()) {
+			if ((Integer.valueOf(yrM.group(1)) >= lobby.maxLength) || (Integer.valueOf(yrM.group(1)) < 0)) {
+				m_client.sendMessage(lobby.channel, "Minimum duration cant be bigger or equal than maximum, or smaller than zero!");
+				return;
+			}
+			lobby.minLength = Integer.valueOf(yrM.group(1));
+			int minutes = lobby.minLength / 60;
+			int seconds = lobby.minLength % 60;
+			String str = String.format("%d:%02d", minutes, seconds);
+			m_client.sendMessage(lobby.channel, "Minimum duration now is " + str);
+		}
+	}
+	
+	private void handleMaxDuration(Lobby lobby, String sender, String message) {
+		if (!lobby.isOP(m_bot.getId(sender)))
+			return;
+
+		Matcher yrM = RegexUtils.matcher("maxduration (.+)", message);
+		if (yrM.matches()) {
+			if (Integer.valueOf(yrM.group(1)) <= lobby.minLength) {
+				m_client.sendMessage(lobby.channel, "Maximum duration cant be smaller or equal than minimum!");
+				return;
+			}
 			lobby.maxLength = Integer.valueOf(yrM.group(1));
-			String length = "";
 			int minutes = lobby.maxLength / 60;
-			int seconds = lobby.maxLength - (minutes * 60);
-			length = minutes + ":" + seconds;
-			m_client.sendMessage(lobby.channel, "Maximum duration now is " + length);
+			int seconds = lobby.maxLength % 60;
+			String str = String.format("%d:%02d", minutes, seconds);
+			m_client.sendMessage(lobby.channel, "Maximum duration now is " + str);
 		}
 	}
 

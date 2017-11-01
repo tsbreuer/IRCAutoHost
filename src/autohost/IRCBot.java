@@ -26,6 +26,7 @@ import org.json.JSONObject;
 
 import com.google.common.collect.HashBiMap;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -521,14 +522,14 @@ public class IRCBot {
 		}
 	}
 
-	public void askForConfirmation(String Sender, int beatmapnumber, Lobby lobby) {
+	public void askForConfirmation(String sender, int beatmapnumber, Lobby lobby) {
 		try {
 			getBeatmapDiff(beatmapnumber, lobby, (array) -> {
 				if (array == null) {
-					m_client.sendMessage(lobby.channel, Sender + ": Beatmap not found.");
+					m_client.sendMessage(lobby.channel, sender + ": Beatmap not found.");
 					return;
 				}
-				int senderID = getId(Sender);
+				int senderID = getId(sender);
 				Request request = new Request();
 				// lobby.requests
 				System.out.println("Array has #objects: " + array.length());
@@ -538,7 +539,7 @@ public class IRCBot {
 					String mode = JSONUtils.silentGetString(obj, "mode");
 					if (!mode.equals(lobby.type)) {
 						m_client.sendMessage(lobby.channel,
-								Sender + " That beatmap does not fit the lobby's current gamemode!");
+								sender + " That beatmap does not fit the lobby's current gamemode!");
 						return;
 					}
 					Beatmap beatmap = JSONUtils.silentGetBeatmap(obj);
@@ -567,22 +568,28 @@ public class IRCBot {
 
 					if (lobby.maxAR != 0 && beatmap.difficulty_ar < lobby.maxAR) {
 						m_client.sendMessage(lobby.channel,
-								Sender + " That beatmap has a too high Approach Rate for this lobby!");
+								sender + " That beatmap has a too high Approach Rate for this lobby!");
 						return;
 					}
 
-					if ((beatmap.total_length) >= lobby.maxLength) {
-						String length = "";
+					if (beatmap.total_length >= lobby.maxLength) {
 						int minutes = lobby.maxLength / 60;
-						int seconds = lobby.maxLength - (minutes * 60);
-						length = minutes + ":" + seconds;
-						m_client.sendMessage(lobby.channel,
-								Sender + " This beatmap too long! Max length is: " + length);
+						int seconds = lobby.maxLength % 60;
+						String str = String.format("%d:%02d", minutes, seconds);
+						m_client.sendMessage(lobby.channel, sender + " This beatmap too long! Max length is: " + str);
 						return;
 					}
-
+					
+					if (beatmap.total_length <= lobby.minLength) {
+						int minutes = lobby.minLength / 60;
+						int seconds = lobby.minLength % 60;
+						String str = String.format("%d:%02d", minutes, seconds);
+						m_client.sendMessage(lobby.channel, sender + " This beatmap too short! Min length is: " + str);
+						return;
+					}
+					
 					if (!lobby.statusTypes.get(beatmap.graveyard)) {
-						m_client.sendMessage(lobby.channel, Sender
+						m_client.sendMessage(lobby.channel, sender
 								+ " That beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
 						return;
 					}
@@ -606,15 +613,15 @@ public class IRCBot {
 				}
 				if (request.bids.size() == 0) {
 					m_client.sendMessage(lobby.channel,
-							Sender + " This beatmap set doesnt have any difficulty matching the lobby's range!");
+							sender + " This beatmap set doesnt have any difficulty matching the lobby's range!");
 				} else if (request.bids.size() == 1) {
 					m_client.sendMessage(lobby.channel,
-							Sender + " Selecting the only matching difficulty from the linked set");
+							sender + " Selecting the only matching difficulty from the linked set");
 					addBeatmap(lobby, request.beatmaps.get(request.bids.iterator().next()));
 				} else {
-					lobby.requests.put(Sender, request);
+					lobby.requests.put(sender, request);
 					m_client.sendMessage(lobby.channel,
-							Sender + " Please pick one of the following difficulties using !select [number]");
+							sender + " Please pick one of the following difficulties using !select [number]");
 					for (int i = 0; i < request.bids.size(); i++) {
 
 						m_client.sendMessage(lobby.channel,
@@ -846,13 +853,15 @@ public class IRCBot {
 			URI uri = new URIBuilder().setScheme("http").setHost("osu.ppy.sh").setPath("/osu/" + beatmapid).build();
 			HttpGet request = new HttpGet(uri);
 			HttpResponse response = httpClient.execute(request);
-			InputStream content = response.getEntity().getContent();
-			if (content.toString().length() < 1) {
+			InputStream bufferedIn = new BufferedInputStream(response.getEntity().getContent());
+			bufferedIn.mark(1);
+			bufferedIn.reset();
+			if (bufferedIn.read() < 0) {
 				throw (new BrokenBeatmap("doesnt-exist"));
 			}
 			// String stringContent = IOUtils.toString(content, "UTF-8");
 			BeatmapParser parser = new BeatmapParser();
-			lt.ekgame.beatmap_analyzer.beatmap.Beatmap cbp = parser.parse(content);
+			lt.ekgame.beatmap_analyzer.beatmap.Beatmap cbp = parser.parse(bufferedIn);
 			if (cbp == null) {
 				m_client.sendMessage(lobby.channel, "Beatmap " + beatmapid + " is no longer available.");
 			}
@@ -903,7 +912,6 @@ public class IRCBot {
 			cbp1 = cbp2 = cbp3 = cbp4 = null;
 			perf = perf2 = perf3 = perf4 = null;
 		} catch (IOException | URISyntaxException | BeatmapException | BrokenBeatmap e) {
-			e.printStackTrace();
 			System.out.println(bm.id);
 			bm = null;
 			System.gc();
@@ -915,6 +923,7 @@ public class IRCBot {
 			if (error.matches()) {
 				throw new BrokenBeatmap("broken-tag");
 			} else
+				e.printStackTrace();
 				return null;
 		}
 
@@ -927,7 +936,6 @@ public class IRCBot {
 			try {
 				getRandomWithinSettings(lobby, (obj) -> {
 					if (obj == null) {
-						m_client.sendMessage(lobby.channel, "An error ocurred while searching for a random beatmap.");
 						m_client.sendMessage(lobby.channel,
 								"Maybe no matches for current lobby settings? Anyone do '!retry' to try again.");
 						lobby.retryForMap = true;
@@ -949,7 +957,8 @@ public class IRCBot {
 							m_client.sendMessage(lobby.channel, "Beatmap has no 'general' tag. Is it broken?");
 						} else if (e.getMessage().equals("doesnt-exist")) {
 							m_client.sendMessage(lobby.channel,
-									"Beatmap no longer exists. Retrying for a different one...");
+									"Beatmap no longer exists. Anyone send !retry for trying a new one");
+									lobby.retryForMap = true;
 						}
 						bm = null;
 						return;
@@ -958,9 +967,8 @@ public class IRCBot {
 
 					if (bm == null) {
 						if (!lobby.type.equals("2")) {
-							m_client.sendMessage(lobby.channel, "An error ocurred while loading the random beatmap.");
-							m_client.sendMessage(lobby.channel, "Maybe it doesnt exist anymore? Retrying");
-							nextbeatmap(lobby);
+							m_client.sendMessage(lobby.channel, "An error ocurred while loading the random beatmap. Anyone send !retry to attempt again");
+							lobby.retryForMap = true;
 							return;
 						}
 					}
@@ -1066,12 +1074,24 @@ public class IRCBot {
 				mincs = "" + lobby.keys;
 			}
 		}
+		
+		String maxduration = "300";
+		maxduration = ""+lobby.maxLength;
+		String minduration = "0";
+		minduration = ""+lobby.minLength;
+		
 		URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/random/")
-				.setParameter("statuses", status).setParameter("modes", mode).setParameter("order", "-difficulty")
-				.setParameter("max_length", "300")
+				.setParameter("statuses", status)
+				.setParameter("modes", mode)
+				.setParameter("order", "-difficulty")
+				.setParameter("max_length", maxduration)
+				.setParameter("min_length", minduration)
 				.setParameter("star", "( " + lobby.minDifficulty + "," + lobby.maxDifficulty + ")")
-				.setParameter("date_start", date_start).setParameter("date_end", date_end).setParameter("ammount", "5")
-				.setParameter("ar", "( 0," + maxAR + ")").setParameter("cs", "(" + mincs + "," + maxcs + ")").build();
+				.setParameter("date_start", date_start).setParameter("date_end", date_end)
+				.setParameter("ammount", "5")
+				.setParameter("ar", "( 0," + maxAR + ")")
+				.setParameter("cs", "(" + mincs + "," + maxcs + ")")
+				.build();
 		HttpGet request = new HttpGet(uri);
 		request.setHeader("Accept", "json");
 		System.out.println(uri.toString());

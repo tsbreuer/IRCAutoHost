@@ -11,7 +11,7 @@ public class TimerThread extends Thread {
 	private Lobby   lobby;
 	private boolean stopped = false;
 	private long    prevTime = System.currentTimeMillis();
-	private long    startTime;
+	public long    startTime;
 	public long    startAfter = 2 * MINUTE;
 	public boolean added = false;
 	public boolean starting = false;
