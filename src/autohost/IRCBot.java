@@ -579,7 +579,7 @@ public class IRCBot {
 						m_client.sendMessage(lobby.channel, sender + " This beatmap too long! Max length is: " + str);
 						return;
 					}
-					
+
 					if (beatmap.total_length <= lobby.minLength) {
 						int minutes = lobby.minLength / 60;
 						int seconds = lobby.minLength % 60;
@@ -587,7 +587,7 @@ public class IRCBot {
 						m_client.sendMessage(lobby.channel, sender + " This beatmap too short! Min length is: " + str);
 						return;
 					}
-					
+
 					if (!lobby.statusTypes.get(beatmap.graveyard)) {
 						m_client.sendMessage(lobby.channel, sender
 								+ " That beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
@@ -924,7 +924,7 @@ public class IRCBot {
 				throw new BrokenBeatmap("broken-tag");
 			} else
 				e.printStackTrace();
-				return null;
+			return null;
 		}
 
 		bm.setpptab(str);
@@ -958,7 +958,7 @@ public class IRCBot {
 						} else if (e.getMessage().equals("doesnt-exist")) {
 							m_client.sendMessage(lobby.channel,
 									"Beatmap no longer exists. Anyone send !retry for trying a new one");
-									lobby.retryForMap = true;
+							lobby.retryForMap = true;
 						}
 						bm = null;
 						return;
@@ -967,7 +967,8 @@ public class IRCBot {
 
 					if (bm == null) {
 						if (!lobby.type.equals("2")) {
-							m_client.sendMessage(lobby.channel, "An error ocurred while loading the random beatmap. Anyone send !retry to attempt again");
+							m_client.sendMessage(lobby.channel,
+									"An error ocurred while loading the random beatmap. Anyone send !retry to attempt again");
 							lobby.retryForMap = true;
 							return;
 						}
@@ -1074,24 +1075,18 @@ public class IRCBot {
 				mincs = "" + lobby.keys;
 			}
 		}
-		
+
 		String maxduration = "300";
-		maxduration = ""+lobby.maxLength;
+		maxduration = "" + lobby.maxLength;
 		String minduration = "0";
-		minduration = ""+lobby.minLength;
-		
+		minduration = "" + lobby.minLength;
+
 		URI uri = new URIBuilder().setScheme("http").setHost("osusearch.com").setPath("/random/")
-				.setParameter("statuses", status)
-				.setParameter("modes", mode)
-				.setParameter("order", "-difficulty")
-				.setParameter("max_length", maxduration)
-				.setParameter("min_length", minduration)
+				.setParameter("statuses", status).setParameter("modes", mode).setParameter("order", "-difficulty")
+				.setParameter("max_length", maxduration).setParameter("min_length", minduration)
 				.setParameter("star", "( " + lobby.minDifficulty + "," + lobby.maxDifficulty + ")")
-				.setParameter("date_start", date_start).setParameter("date_end", date_end)
-				.setParameter("ammount", "5")
-				.setParameter("ar", "( 0," + maxAR + ")")
-				.setParameter("cs", "(" + mincs + "," + maxcs + ")")
-				.build();
+				.setParameter("date_start", date_start).setParameter("date_end", date_end).setParameter("ammount", "5")
+				.setParameter("ar", "( 0," + maxAR + ")").setParameter("cs", "(" + mincs + "," + maxcs + ")").build();
 		HttpGet request = new HttpGet(uri);
 		request.setHeader("Accept", "json");
 		System.out.println(uri.toString());
@@ -1193,9 +1188,10 @@ public class IRCBot {
 				} else {
 					if (askForWhich.bids.size() > 4) {
 						lobby.requests.put(sender, askForWhich);
-						m_client.sendMessage(lobby.channel, sender+  " I'll be PMing you with all the results as to not spam the lobby.");
-						m_client.sendMessage(sender,
-								sender + " Please pick one of the following difficulties using !select [number] (In the lobby channel). | E.g. '!select 1'");
+						m_client.sendMessage(lobby.channel,
+								sender + " I'll be PMing you with all the results as to not spam the lobby.");
+						m_client.sendMessage(sender, sender
+								+ " Please pick one of the following difficulties using !select [number] (In the lobby channel). | E.g. '!select 1'");
 						for (int a = 0; a < askForWhich.bids.size(); a++) {
 							m_client.sendMessage(sender, "[" + a + "] || "
 									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).artist + " - "
@@ -1210,14 +1206,14 @@ public class IRCBot {
 							lobby.requests.remove(sender);
 						}
 						lobby.requests.put(sender, askForWhich);
-						m_client.sendMessage(lobby.channel,
-								sender + " Please pick one of the following difficulties using !select [number] | E.g. '!select 1'");
+						m_client.sendMessage(lobby.channel, sender
+								+ " Please pick one of the following difficulties using !select [number] | E.g. '!select 1'");
 						for (int a = 0; a < askForWhich.bids.size(); a++) {
 							m_client.sendMessage(lobby.channel, "[" + a + "] || "
 									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).artist + " - "
 									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).title + " "
 									+ "[[https://osu.ppy.sh/b/"
-									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).beatmap_id + ""
+									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).beatmap_id + " "
 									+ askForWhich.beatmaps.get(askForWhich.bids.get(a)).difficulty_name + "]] - "
 									+ round(askForWhich.beatmaps.get(askForWhich.bids.get(a)).difficulty, 2) + "*");
 						}
@@ -1313,7 +1309,7 @@ public class IRCBot {
 			md = md + "NC";
 		if (lobby.HalfTime)
 			md = md + "HT";
-		if (pplife != null)
+		if (pplife != null) {
 			if (pplife.ppvalues[0] != 0) {
 				m_client.sendMessage(lobby.channel,
 						md + "SS: " + String.format("%.02f", pplife.ppvalues[0]) + "pp || " + md + "HD: "
@@ -1321,6 +1317,7 @@ public class IRCBot {
 								+ String.format("%.02f", pplife.ppvalues[2]) + "pp || " + md + "HDHR: "
 								+ String.format("%.02f", pplife.ppvalues[3]) + "pp");
 			}
+		}
 		lobby.timer.resetTimer();
 		lobby.beatmapPlayed.add(next);
 		pplife = null;
@@ -1414,6 +1411,10 @@ public class IRCBot {
 								+ String.format("%.02f", pplife.ppvalues[2]) + "pp || " + md + "HDHR: "
 								+ String.format("%.02f", pplife.ppvalues[3]) + "pp");
 			}
+		lobby.timer.resetTimer();
+		lobby.beatmapPlayed.add(next);
+		pplife = null;
+		
 	}
 
 	public Boolean isOP(String user) {

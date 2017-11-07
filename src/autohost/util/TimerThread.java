@@ -32,6 +32,11 @@ public class TimerThread extends Thread {
 		stopped = true;
 	}
 
+	public Boolean isRunning() {
+		return stopped;
+	}
+
+	
 	public void continueTimer() {
 		stopped = false;
 		resetTimer();
@@ -54,6 +59,7 @@ public class TimerThread extends Thread {
 	public void resetTimer() {
 		added = false;
 		starting = false;
+		stopped = false;
 		askedAlready = false;
 		startTime = System.currentTimeMillis() + startAfter + 200;
 	}

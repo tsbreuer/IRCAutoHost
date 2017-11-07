@@ -8,8 +8,6 @@ import autohost.util.RegexUtils;
 import autohost.util.User;
 
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Queue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 

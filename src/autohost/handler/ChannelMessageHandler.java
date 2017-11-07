@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.time.LocalTime;
 import java.util.Map;
 import java.util.regex.Matcher;
 
@@ -258,6 +257,10 @@ public class ChannelMessageHandler {
 					}
 				}
 			}
+			if (lobby.votestarted(leftMatcher.group(1))) {
+				lobby.voteStart.remove(leftMatcher.group(1));
+			}
+			checkLobbyReady(lobby);
 			if (lobby.slots.size() == 0) {
 				if (!lobby.OPLobby) {
 					m_client.sendMessage(lobby.channel, "!mp close");
@@ -355,6 +358,21 @@ public class ChannelMessageHandler {
 		m_bot.m_writer.println("Regext error Line: |" + message + "|");
 		m_bot.m_writer.flush();
 		return;
+	}
+
+	private void checkLobbyReady(Lobby lobby) {
+		if (lobby.voteStart.size() >= round(lobby.slots.size() * 0.75, 0)) {
+			if (lobby.timer.added) {
+				if (lobby.timer.askedAlready) {
+					m_bot.start(lobby);
+					return;
+				}
+				lobby.timer.starting = true;
+				lobby.timer.startingTime = System.currentTimeMillis();
+			} else {
+				m_bot.start(lobby);
+			}
+		}
 	}
 
 	private void handleCommands(Lobby lobby, String sender, String message) {
@@ -507,6 +525,8 @@ public class ChannelMessageHandler {
 				+ (System.currentTimeMillis() - ((lobby.timer.startTime - lobby.timer.startAfter) - 200)));
 		m_client.sendMessage(lobby.channel,
 				"Time left for start: " + (lobby.timer.startTime - System.currentTimeMillis()));
+		m_client.sendMessage(lobby.channel,
+				"Lobby timer stopped status: " + lobby.timer.isRunning());
 	}
 
 	private void handleKeys(Lobby lobby, String sender, String message) {
@@ -851,18 +871,7 @@ public class ChannelMessageHandler {
 			lobby.voteStart.add(sender);
 			m_client.sendMessage(lobby.channel, sender + " voted for starting! (" + lobby.voteStart.size() + "/"
 					+ (int) round(lobby.slots.size() * 0.75, 0) + ")");
-			if (lobby.voteStart.size() >= round(lobby.slots.size() * 0.75, 0)) {
-				if (lobby.timer.added) {
-					if (lobby.timer.askedAlready) {
-						m_bot.start(lobby);
-						return;
-					}
-					lobby.timer.starting = true;
-					lobby.timer.startingTime = System.currentTimeMillis();
-				} else {
-					m_bot.start(lobby);
-				}
-			}
+			checkLobbyReady(lobby);
 		}
 	}
 
