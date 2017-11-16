@@ -710,22 +710,15 @@ public class IRCBot {
 		for (int i = 0; i < 16; i++) {
 			if (lobby.slots.get(i) != null) {
 				if (lobby.slots.get(i).playerid != 0) {
-					Boolean voted = false;
-					for (String string : lobby.voteStart) {
-						if (string.equalsIgnoreCase(lobby.slots.get(i).name)) {
-							ready++;
-							voted = true;
-						}
-					}
-					if (!voted) {
-						if (lobby.slots.get(i).status.equalsIgnoreCase("Ready")) {
-							ready++;
-						}
+					if (lobby.slots.get(i).status.equalsIgnoreCase("Ready")) {
+						if (!lobby.voteStart.contains(lobby.slots.get(i).name))
+						ready++;
 					}
 					players++;
 				}
 			}
 		}
+		ready = ready + lobby.voteStart.size();
 		if (players == 0) {
 			lobby.timer.resetTimer();
 			nextbeatmap(lobby);
@@ -737,7 +730,7 @@ public class IRCBot {
 			start(lobby);
 		}
 		if (ready < round(players * 0.6, 0)) {
-			m_client.sendMessage(lobby.channel, ready + "/" + (int) (round(players * 0.75, 0))
+			m_client.sendMessage(lobby.channel, ready + "/" + (int) (round(players * 0.6, 0))
 					+ " votes to start the game. Please do !ready (or !r) if you're ready.");
 		}
 		if (players == 0) {
@@ -1414,7 +1407,7 @@ public class IRCBot {
 		lobby.timer.resetTimer();
 		lobby.beatmapPlayed.add(next);
 		pplife = null;
-		
+
 	}
 
 	public Boolean isOP(String user) {
@@ -1504,6 +1497,9 @@ public class IRCBot {
 	}
 
 	public boolean hasAlreadyRequested(Lobby lobby, String sender) {
+		if (lobby.isOP(getId(sender))) {
+			return false;
+		}
 		int senderID = getId(sender);
 		for (Beatmap beatmap : lobby.beatmapQueue) {
 			if (beatmap.RequestedBy == senderID) {

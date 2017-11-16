@@ -368,7 +368,6 @@ public class ChannelMessageHandler {
 					return;
 				}
 				lobby.timer.starting = true;
-				lobby.timer.startingTime = System.currentTimeMillis();
 			} else {
 				m_bot.start(lobby);
 			}

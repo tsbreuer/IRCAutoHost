@@ -7,22 +7,23 @@ import static autohost.util.TimeUtils.MINUTE;
 import static autohost.util.TimeUtils.SECOND;
 
 public class TimerThread extends Thread {
-	private IRCBot  m_bot;
-	private Lobby   lobby;
+	private IRCBot m_bot;
+	private Lobby lobby;
 	private boolean stopped = false;
-	private long    prevTime = System.currentTimeMillis();
-	public long    startTime;
-	public long    startAfter = 2 * MINUTE;
+	private long prevTime = System.currentTimeMillis();
+	public long startTime;
+	public long startAfter = 2 * MINUTE;
 	public boolean added = false;
 	public boolean starting = false;
 	public long startingTime = System.currentTimeMillis();
-	public boolean askedAlready= false;
+	public boolean askedAlready = false;
 	private long min3mark;
 	private long min2mark;
 	private long min1mark;
 	private long sec10mark;
 	private long currTime;
 
+	
 	public TimerThread(IRCBot bot, Lobby lobby) {
 		m_bot = bot;
 		this.lobby = lobby;
@@ -36,7 +37,6 @@ public class TimerThread extends Thread {
 		return stopped;
 	}
 
-	
 	public void continueTimer() {
 		stopped = false;
 		resetTimer();
@@ -47,6 +47,7 @@ public class TimerThread extends Thread {
 			return false;
 
 		added = true;
+		startingTime = System.currentTimeMillis();
 		startTime = startTime + MINUTE;
 		return true;
 
@@ -61,7 +62,7 @@ public class TimerThread extends Thread {
 		starting = false;
 		stopped = false;
 		askedAlready = false;
-		startTime = System.currentTimeMillis() + startAfter + 200;
+		startTime = System.currentTimeMillis() + startAfter + 1000;
 	}
 
 	private void sendMessage(String message) {
@@ -72,10 +73,12 @@ public class TimerThread extends Thread {
 		resetTimer();
 		while (!stopped) {
 			currTime = System.currentTimeMillis();
-			if (currTime-startingTime >= 1*MINUTE) {
-				askedAlready = true;
-				if (starting) {
-				m_bot.start(lobby);
+			if (added) {
+				if (currTime >= (startingTime + MINUTE)) {
+					askedAlready = true;
+					if (starting) {
+						m_bot.start(lobby);
+					}
 				}
 			}
 			min3mark = startTime - 3 * MINUTE;
@@ -89,7 +92,8 @@ public class TimerThread extends Thread {
 				sendMessage("Starting in 2 minutes. Please use !r or !ready if you're ready to start.");
 			}
 			if (currTime >= min1mark && prevTime < min1mark) {
-				sendMessage("Starting in 1 minute. Please use !r or !ready if you're ready to start. If you need more time, do !wait.");
+				sendMessage(
+						"Starting in 1 minute. Please use !r or !ready if you're ready to start. If you need more time, do !wait.");
 			}
 			if (currTime >= sec10mark && prevTime < sec10mark) {
 				lobby.slots.clear();
