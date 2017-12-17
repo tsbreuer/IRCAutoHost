@@ -12,6 +12,7 @@ import lt.ekgame.beatmap_analyzer.performance.Performance;
 import lt.ekgame.beatmap_analyzer.performance.scores.Score;
 import lt.ekgame.beatmap_analyzer.utils.Mod;
 import lt.ekgame.beatmap_analyzer.utils.Mods;
+import moe.autohost.shared.Global;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
@@ -79,7 +80,7 @@ public class IRCBot {
 		// Define all settings. Meh.
 		this.autohost = autohost;
 		try {
-			m_writer = new PrintWriter("afklog.txt", "UTF-8");
+			m_writer = new PrintWriter(Global.WORKING_DIRECTORY + "afklog.txt", "UTF-8");
 			m_writer.write("Bot started. This is a error log file");
 			m_writer.flush();
 		} catch (FileNotFoundException | UnsupportedEncodingException e) {

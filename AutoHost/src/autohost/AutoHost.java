@@ -1,5 +1,7 @@
 package autohost;
 
+import moe.autohost.shared.Global;
+
 import java.io.IOException;
 
 public class AutoHost {
@@ -14,7 +16,7 @@ public class AutoHost {
 	}
 
 	public AutoHost() throws IOException {
-		this.config = new Config("config.properties");
+		this.config = new Config(Global.WORKING_DIRECTORY + "config.properties");
 		this.irc = new IRCBot(this, config);
 	}
 }

@@ -1,4 +1,12 @@
+# Ignore auto-host sensitive data, prevent accidental commits
+**/config.properties
+**/afklog.txt
+**/derby.log
+
+# Ignore build outputs
 *.class
-target/
-config.properties
-afklog.txt
+**/target/
+
+# Ignore user specific IntelliJ settings
+**/workspace.xml
+**/tasks.xml
