@@ -66,7 +66,7 @@ public class TimerThread extends Thread {
 	}
 
 	private void sendMessage(String message) {
-		m_bot.getClient().sendMessage(lobby.channel, message);
+		m_bot.getClient().sendMessage(lobby.getChannel(), message);
 	}
 
 	public void run() {
@@ -96,7 +96,7 @@ public class TimerThread extends Thread {
 						"Starting in 1 minute. Please use !r or !ready if you're ready to start. If you need more time, do !wait.");
 			}
 			if (currTime >= sec10mark && prevTime < sec10mark) {
-				lobby.slots.clear();
+				lobby.getSlots().clear();
 				sendMessage("!mp settings");
 				sendMessage("Starting in 10 seconds.");
 

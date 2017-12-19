@@ -22,6 +22,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -61,14 +62,14 @@ public class ChannelMessageHandler {
 		Lobby loadedLobby = null;
 		if (lobbies.containsKey(channel)) {
 			Lobby lobby = lobbies.get(channel);
-			if (lobby.channel.equalsIgnoreCase(channel)) {
+			if (lobby.getChannel().equalsIgnoreCase(channel)) {
 				// Is it an autohosted (by us) channel?
 				loadedLobby = lobby;
 			}
 		}
 		if (permanentlobbies.containsKey(channel)) {
 			Lobby lobby = permanentlobbies.get(channel).lobby;
-			if (lobby.channel.equalsIgnoreCase(channel)) {
+			if (lobby.getChannel().equalsIgnoreCase(channel)) {
 				// Is it an autohosted (by us) channel?
 				loadedLobby = lobby;
 			}
@@ -99,8 +100,8 @@ public class ChannelMessageHandler {
 		if (rNM.matches()) {
 			String name = rNM.group(1);
 			System.out.println("New room name! " + name);
-			lobby.name = name;
-			lobby.mpID = Integer.valueOf(rNM.group(2));
+			lobby.setName(name);
+			lobby.setMpID(Integer.valueOf(rNM.group(2)));
 			return;
 		}
 
@@ -108,18 +109,18 @@ public class ChannelMessageHandler {
 		Matcher rTM = RegexUtils.matcher("Team Mode: (.+), Win condition: (.+)", message);
 		if (rTM.matches()) {
 			System.out.println("Team & Condition set");
-			lobby.teamgamemode = rTM.group(1);
-			lobby.winCondition = rTM.group(2);
+			lobby.setTeamgamemode(rTM.group(1));
+			lobby.setWinCondition(rTM.group(2));
 			return;
 		}
 
 		// Beatmap change... i guess thats k?
 		Matcher bM = RegexUtils.matcher("Beatmap: https://osu.ppy.sh/b/(\\d+) (.+)- (.+)", message);
 		if (bM.matches()) {
-			if (lobby.currentBeatmap != null) {
-				lobby.currentBeatmap.beatmap_id = Integer.valueOf(bM.group(1));
-				lobby.currentBeatmapAuthor = bM.group(2);
-				lobby.currentBeatmapName = bM.group(3);
+			if (lobby.getCurrentBeatmap() != null) {
+				lobby.getCurrentBeatmap().beatmap_id = Integer.valueOf(bM.group(1));
+				lobby.setCurrentBeatmapAuthor(bM.group(2));
+				lobby.setCurrentBeatmapName(bM.group(3));
 			}
 			return;
 		}
@@ -133,9 +134,10 @@ public class ChannelMessageHandler {
 		// Is this one even worth adding?
 		Matcher pM = RegexUtils.matcher("Players: (\\d+)", message);
 		if (pM.matches()) {
-			if (lobby.slots.size() != Integer.valueOf(pM.group(1))) {
-				// m_client.sendMessage(lobby.channel, "Warning: Player count
-				// mismatch! Did bot reconnect?");
+			if (lobby.getSlots().size() != Integer.valueOf(pM.group(1))) {
+
+				m_client.sendMessage(lobby.getChannel(), "Warning: Player count mismatch! Did bot reconnect?");
+
 			}
 			return;
 		}
@@ -143,11 +145,11 @@ public class ChannelMessageHandler {
 		Matcher passmatch = RegexUtils.matcher("(.+) the match password", message);
 		if (passmatch.matches()) {
 			if (passmatch.group(1).equals("Changed")) {
-				if (lobby.Password.equalsIgnoreCase("")) {
-					m_client.sendMessage(lobby.channel, "!mp password");
+				if (lobby.getPassword().equalsIgnoreCase("")) {
+					m_client.sendMessage(lobby.getChannel(), "!mp password");
 				}
-			} else if (!lobby.Password.equalsIgnoreCase("")) {
-				m_client.sendMessage(lobby.channel, "!mp password");
+			} else if (!lobby.getPassword().equalsIgnoreCase("")) {
+				m_client.sendMessage(lobby.getChannel(), "!mp password");
 			}
 			return;
 		}
@@ -179,15 +181,15 @@ public class ChannelMessageHandler {
 				return;
 			}
 			name = name.trim();
-			if (lobby.slots.containsKey(slotN)) {
-				Slot slotM = lobby.slots.get(slotN);
+			if (lobby.getSlots().containsKey(slotN)) {
+				Slot slotM = lobby.getSlots().get(slotN);
 				slotM.status = sM.group(3);
 				slotM.id = slotN;
 				slotM.playerid = Integer.valueOf(sM.group(4));
 				slotM.name = name;
 				m_bot.m_writer.println("Slot movement: '" + name + "'");
 				m_bot.m_writer.flush();
-				lobby.slots.replace(slotN, slotM);
+				lobby.getSlots().replace(slotN, slotM);
 			} else {
 				Slot slotM = new Slot();
 				slotM.status = sM.group(3);
@@ -196,7 +198,7 @@ public class ChannelMessageHandler {
 				slotM.name = name;
 				m_bot.m_writer.println("Slot movement: '" + name + "'");
 				m_bot.m_writer.flush();
-				lobby.slots.put(slotN, slotM);
+				lobby.getSlots().put(slotN, slotM);
 			}
 			System.out.println("Slot movement: '" + name + "'");
 			return;
@@ -214,35 +216,34 @@ public class ChannelMessageHandler {
 			Slot newSlot = new Slot(jslot, playerName, playerId, status);
 			m_bot.m_writer.println("New slot: '" + playerName + "'");
 			m_bot.m_writer.flush();
-			if (lobby.slots.containsKey(jslot)) {
-				lobby.slots.replace(jslot, newSlot);
+			if (lobby.getSlots().containsKey(jslot)) {
+				lobby.getSlots().replace(jslot, newSlot);
 			} else {
-				lobby.slots.put(jslot, newSlot);
+				lobby.getSlots().put(jslot, newSlot);
 			}
-			lobby.afk.put(playerName, 0);
+			lobby.getAfk().put(playerName, 0);
 
 			int id = m_bot.getId(playerName);
 			if (lobby.isOP(id)) {
-				m_client.sendMessage(lobby.channel, "Operator " + playerName + " has joined. Welcome!");
-				m_client.sendMessage(lobby.channel, "!mp addref " + playerName);
+				m_client.sendMessage(lobby.getChannel(), "Operator " + playerName + " has joined. Welcome!");
+				m_client.sendMessage(lobby.getChannel(), "!mp addref " + playerName);
 			}
 			return;
 		}
 
 		Matcher moveMatcher = RegexUtils.matcher("(.+) moved to slot (\\d+)", message);
 		if (moveMatcher.matches()) {
-			int playerId = 0;
-			playerId = m_bot.getId(moveMatcher.group(1));
+			int playerId = m_bot.getId(moveMatcher.group(1));
 			Slot player = new Slot(Integer.valueOf(moveMatcher.group(2)), moveMatcher.group(1), playerId, "Not Ready");
 			for (int i = 1; i < 17; i++) {
-				if (lobby.slots.containsKey(i)) {
-					if (lobby.slots.get(i).name.equalsIgnoreCase(moveMatcher.group(1))) {
-						player = lobby.slots.get(i);
-						lobby.slots.remove(i);
+				if (lobby.getSlots().containsKey(i)) {
+					if (lobby.getSlots().get(i).name.equalsIgnoreCase(moveMatcher.group(1))) {
+						player = lobby.getSlots().get(i);
+						lobby.getSlots().remove(i);
 					}
 				}
 			}
-			lobby.slots.put(Integer.valueOf(moveMatcher.group(2)), player);
+			lobby.getSlots().put(Integer.valueOf(moveMatcher.group(2)), player);
 			return;
 		}
 
@@ -251,50 +252,50 @@ public class ChannelMessageHandler {
 		Matcher leftMatcher = RegexUtils.matcher("(.+) left the game.", message);
 		if (leftMatcher.matches()) {
 			for (int i = 1; i < 17; i++) {
-				if (lobby.slots.containsKey(i)) {
-					if (lobby.slots.get(i).name.equalsIgnoreCase(leftMatcher.group(1))) {
-						lobby.slots.remove(i);
+				if (lobby.getSlots().containsKey(i)) {
+					if (lobby.getSlots().get(i).name.equalsIgnoreCase(leftMatcher.group(1))) {
+						lobby.getSlots().remove(i);
 					}
 				}
 			}
 			if (lobby.votestarted(leftMatcher.group(1))) {
-				lobby.voteStart.remove(leftMatcher.group(1));
+				lobby.getVoteStart().remove(leftMatcher.group(1));
 			}
-			checkLobbyReady(lobby);
-			if (lobby.slots.size() == 0) {
-				if (!lobby.OPLobby) {
-					m_client.sendMessage(lobby.channel, "!mp close");
+			if (lobby.getSlots().size() == 0) {
+				if (!lobby.getOPLobby()) {
+					m_client.sendMessage(lobby.getChannel(), "!mp close");
 					m_bot.removeLobby(lobby);
 				}
 			}
-			if (lobby.requests.containsKey(leftMatcher.group(1)))
-				lobby.requests.remove(leftMatcher.group(1));
+			checkLobbyReady(lobby);
+			if (lobby.getRequests().containsKey(leftMatcher.group(1)))
+				lobby.getRequests().remove(leftMatcher.group(1));
 			return;
 		}
 
 		if (message.equalsIgnoreCase("All players are ready")) {
-			m_client.sendMessage(lobby.channel, "All players are ready! starting...");
-			m_client.sendMessage(lobby.channel, "!mp start 5");
-			lobby.timer.stopTimer();
+			m_client.sendMessage(lobby.getChannel(), "All players are ready! starting...");
+			m_client.sendMessage(lobby.getChannel(), "!mp start 5");
+			lobby.getTimer().stopTimer();
 			return;
 		}
 
 		if (message.equalsIgnoreCase("The match has started!")) {
-			lobby.scores.clear();
-			lobby.Playing = true;
+			lobby.getScores().clear();
+			lobby.setPlaying(true);
 			return;
 		}
 
 		if (message.equalsIgnoreCase("The match has finished!")) {
-			for (Slot player : lobby.slots.values()) {
-				if (!lobby.scores.containsKey(player.name)) {
+			for (Slot player : lobby.getSlots().values()) {
+				if (!lobby.getScores().containsKey(player.name)) {
 					m_bot.addAFK(lobby, player.name);
 					m_bot.m_writer.println("AFK!: Player name: '" + player.name + "'");
 					m_bot.m_writer.flush();
 				}
 			}
 			m_bot.nextbeatmap(lobby);
-			lobby.timer.continueTimer();
+			lobby.getTimer().continueTimer();
 			return;
 		}
 
@@ -307,7 +308,7 @@ public class ChannelMessageHandler {
 				m_bot.m_writer.flush();
 			} else {
 				m_bot.removeAFK(lobby, scoreMatcher.group(1));
-				lobby.scores.put(scoreMatcher.group(1), Integer.valueOf(scoreMatcher.group(2)));
+				lobby.getScores().put(scoreMatcher.group(1), Integer.valueOf(scoreMatcher.group(2)));
 			}
 			return;
 		}
@@ -357,17 +358,16 @@ public class ChannelMessageHandler {
 
 		m_bot.m_writer.println("Regext error Line: |" + message + "|");
 		m_bot.m_writer.flush();
-		return;
 	}
 
 	private void checkLobbyReady(Lobby lobby) {
-		if (lobby.voteStart.size() >= round(lobby.slots.size() * 0.75, 0)) {
-			if (lobby.timer.added) {
-				if (lobby.timer.askedAlready) {
+		if (lobby.getVoteStart().size() >= round(lobby.getSlots().size() * 0.75, 0)) {
+			if (lobby.getTimer().added) {
+				if (lobby.getTimer().askedAlready) {
 					m_bot.start(lobby);
 					return;
 				}
-				lobby.timer.starting = true;
+				lobby.getTimer().starting = true;
 			} else {
 				m_bot.start(lobby);
 			}
@@ -386,200 +386,199 @@ public class ChannelMessageHandler {
 		message = message.substring(1);
 		String[] args = message.split(" ");
 		switch (args[0]) {
-		case "add":
-			handleAdd(lobby, sender, message);
-			break;
-		case "adddt":
-			handleAddDT(lobby, sender, message);
-			break;
-		case "ready":
-		case "r":
-			handleReady(lobby, sender);
-			break;
-		case "skip":
-		case "s":
-			handleSkip(lobby, sender);
-			break;
-		case "timerstatus":
-			handleTimerStatus(lobby, sender);
-			break;
-		case "keys":
-			handleKeys(lobby, sender, message);
-			break;
-		case "info":
-			handleInfo(lobby);
-			break;
-		case "commands":
-			handleCommands(lobby);
-			break;
-		case "playlist":
-		case "queue":
-			handlePlaylist(lobby);
-			break;
-		case "select":
-			handleSelect(lobby, sender, message);
-			break;
-		case "maxdiff":
-			handleMaxDifficulty(lobby, sender, message);
-			break;
-		case "freemods":
-			handleFreeMods(lobby, sender);
-			break;
-		case "mode":
-			handleMode(lobby, sender, message);
-			break;
-		case "graveyard":
-			handleGraveyard(lobby, sender);
-			break;
-		case "prev":
-		case "previous":
-			handlePrevious(lobby, sender);
-			break;
-		case "lock":
-			handleLock(lobby, sender);
-			break;
-		case "ver":
-			handleVersion(lobby);
-			break;
-		case "wait":
-			handleWait(lobby);
-			break;
-		case "lobby":
-			handleLobby(lobby, sender, message);
-			break;
-		case "start":
-			handleStart(lobby, sender);
-			break;
-		case "last":
-		case "l":
-			handleLast(lobby, sender);
-			break;
-		case "kick":
-			handleKick(lobby, sender, message);
-			break;
-		case "addop":
-			handleAddOP(lobby, sender, message);
-			break;
-		case "forceskip":
-			handleForceSkip(lobby, sender);
-			break;
-		case "forcestart":
-			handleForceStart(lobby, sender);
-			break;
-		case "password":
-			handlePassword(lobby, sender, message);
-			break;
-		case "mindiff":
-			handleMinDifficulty(lobby, sender, message);
-			break;
-		case "maxar":
-			handleMaxAR(lobby, sender, message);
-			break;
-		case "maxyear":
-			handleMaxYear(lobby, sender, message);
-			break;
-		case "minyear":
-			handleMinYear(lobby, sender, message);
-			break;
-		case "limityear":
-			handleLimitYear(lobby, sender);
-			break;
-		case "retry":
-			handleRetryForNewMap(lobby, sender);
-			break;
-		case "minduration":
-			handleMinDuration(lobby, sender, message);
-			break;
-		case "maxduration":
-			handleMaxDuration(lobby, sender, message);
-			break;
-		case "hostme":
-			handleHostMe(lobby, sender);
-			break;
-		case "clearhost":
-			handleClearHost(lobby, sender);
-			break;
-		case "random":
-			handleRandom(lobby, sender);
-			break;
-		case "rename":
-			handleRename(lobby, sender, message);
-			break;
-		case "say":
-			handleSay(lobby, sender, message);
-			break;
-		case "closeroom":
-			handleCloseRoom(lobby, sender);
-			break;
-		case "searchsong":
-			handleSearchSong(lobby, sender, message);
-			break;
-		default:
-			// Unknown command.
+			case "add":
+				handleAdd(lobby, sender, message);
+				break;
+			case "adddt":
+				handleAddDT(lobby, sender, message);
+				break;
+			case "ready":
+			case "r":
+				handleReady(lobby, sender);
+				break;
+			case "skip":
+			case "s":
+				handleSkip(lobby, sender);
+				break;
+			case "timerstatus":
+				handleTimerStatus(lobby);
+				break;
+			case "keys":
+				handleKeys(lobby, message);
+				break;
+			case "info":
+				handleInfo(lobby);
+				break;
+			case "commands":
+				handleCommands(lobby);
+				break;
+			case "playlist":
+			case "queue":
+				handlePlaylist(lobby);
+				break;
+			case "select":
+				handleSelect(lobby, sender, message);
+				break;
+			case "maxdiff":
+				handleMaxDifficulty(lobby, sender, message);
+				break;
+			case "freemods":
+				handleFreeMods(lobby, sender);
+				break;
+			case "mode":
+				handleMode(lobby, sender, message);
+				break;
+			case "graveyard":
+				handleGraveyard(lobby, sender);
+				break;
+			case "prev":
+			case "previous":
+				handlePrevious(lobby, sender);
+				break;
+			case "lock":
+				handleLock(lobby, sender);
+				break;
+			case "ver":
+				handleVersion(lobby);
+				break;
+			case "wait":
+				handleWait(lobby);
+				break;
+			case "lobby":
+				handleLobby(lobby, sender, message);
+				break;
+			case "start":
+				handleStart(lobby, sender);
+				break;
+			case "last":
+			case "l":
+				handleLast(lobby, sender);
+				break;
+			case "kick":
+				handleKick(lobby, sender, message);
+				break;
+			case "addop":
+				handleAddOP(lobby, sender, message);
+				break;
+			case "forceskip":
+				handleForceSkip(lobby, sender);
+				break;
+			case "forcestart":
+				handleForceStart(lobby, sender);
+				break;
+			case "password":
+				handlePassword(lobby, sender, message);
+				break;
+			case "mindiff":
+				handleMinDifficulty(lobby, sender, message);
+				break;
+			case "maxar":
+				handleMaxAR(lobby, sender, message);
+				break;
+			case "maxyear":
+				handleMaxYear(lobby, sender, message);
+				break;
+			case "minyear":
+				handleMinYear(lobby, sender, message);
+				break;
+			case "limityear":
+				handleLimitYear(lobby, sender);
+				break;
+			case "retry":
+				handleRetryForNewMap(lobby, sender);
+				break;
+			case "minduration":
+				handleMinDuration(lobby, sender, message);
+				break;
+			case "maxduration":
+				handleMaxDuration(lobby, sender, message);
+				break;
+			case "hostme":
+				handleHostMe(lobby, sender);
+				break;
+			case "clearhost":
+				handleClearHost(lobby, sender);
+				break;
+			case "random":
+				handleRandom(lobby, sender);
+				break;
+			case "rename":
+				handleRename(lobby, sender, message);
+				break;
+			case "say":
+				handleSay(lobby, sender, message);
+				break;
+			case "closeroom":
+				handleCloseRoom(lobby, sender);
+				break;
+			case "searchsong":
+				handleSearchSong(lobby, sender, message);
+				break;
+			default:
+				// Unknown command.
 		}
 	}
 
-	private void handleTimerStatus(Lobby lobby, String sender) {
-		m_client.sendMessage(lobby.channel, "Time passed since start: "
-				+ (System.currentTimeMillis() - ((lobby.timer.startTime - lobby.timer.startAfter) - 200)));
-		m_client.sendMessage(lobby.channel,
-				"Time left for start: " + (lobby.timer.startTime - System.currentTimeMillis()));
-		m_client.sendMessage(lobby.channel,
-				"Lobby timer stopped status: " + lobby.timer.isRunning());
+	private void handleTimerStatus(Lobby lobby) {
+		m_client.sendMessage(lobby.getChannel(), "Time passed since start: "
+				+ (System.currentTimeMillis() - ((lobby.getTimer().startTime - lobby.getTimer().startAfter) - 200)));
+		m_client.sendMessage(lobby.getChannel(),
+				"Time left for start: " + (lobby.getTimer().startTime - System.currentTimeMillis()));
+		m_client.sendMessage(lobby.getChannel(),
+				"Lobby timer stopped status: " + lobby.getTimer().isRunning());
 	}
 
-	private void handleKeys(Lobby lobby, String sender, String message) {
-		if (!lobby.type.equals("3")) {
-			m_client.sendMessage(lobby.channel, "This only is available to mania lobbies.");
+	private void handleKeys(Lobby lobby, String message) {
+		if (!lobby.getType().equals("3")) {
+			m_client.sendMessage(lobby.getChannel(), "This only is available to mania lobbies.");
 			return;
 		}
 		Matcher keys = RegexUtils.matcher("keys ?(\\d+)?", message);
 		if (keys.matches()) {
 			if (!(keys.group(1).equals(""))) {
-				lobby.keys = Integer.valueOf(keys.group(1));
-				if (!lobby.keyLimit) {
-					m_client.sendMessage(lobby.channel, "Enabled the key limiter");
-					lobby.keyLimit = true;
+				lobby.setKeys(Integer.valueOf(keys.group(1)));
+				if (!lobby.getKeyLimit()) {
+					m_client.sendMessage(lobby.getChannel(), "Enabled the key limiter");
+					lobby.setKeyLimit(true);
 				}
-				m_client.sendMessage(lobby.channel, "The new key mode is " + lobby.keys + "K");
+				m_client.sendMessage(lobby.getChannel(), "The new key mode is " + lobby.getKeys() + "K");
 			} else {
-				if (lobby.keyLimit) {
-					lobby.keyLimit = false;
-					m_client.sendMessage(lobby.channel, "The key limit was disabled");
+				if (lobby.getKeyLimit()) {
+					lobby.setKeyLimit(false);
+					m_client.sendMessage(lobby.getChannel(), "The key limit was disabled");
 				}
 			}
 		}
 	}
 
 	private void handleRetryForNewMap(Lobby lobby, String sender) {
-		if (!lobby.retryForMap) {
+		if (!lobby.getRetryForMap()) {
 			m_client.sendMessage(sender, "The lobby didnt have an issue with the random? Not registered.");
 			return;
 		}
 		m_bot.nextbeatmap(lobby);
-		lobby.retryForMap = false;
+		lobby.setRetryForMap(false);
 	}
 
 	private void handlePrevious(Lobby lobby, String sender) {
-		if (lobby.previousBeatmap == null) {
-			m_client.sendMessage(lobby.channel,
+		if (lobby.getPreviousBeatmap() == null) {
+			m_client.sendMessage(lobby.getChannel(),
 					sender + " there is no beatmap in the last played. Did the lobby just get created?");
 
 		} else {
-			m_client.sendMessage(lobby.channel,
-					"The lastest beatmap played was [https://osu.ppy.sh/b/" + lobby.previousBeatmap.beatmap_id + " "
-							+ lobby.previousBeatmap.artist + " - " + lobby.previousBeatmap.title + "]");
+			m_client.sendMessage(lobby.getChannel(),
+					"The lastest beatmap played was [https://osu.ppy.sh/b/" + lobby.getPreviousBeatmap().beatmap_id + " "
+							+ lobby.getPreviousBeatmap().artist + " - " + lobby.getPreviousBeatmap().title + "]");
 		}
-		return;
 	}
 
 	private void handleAdd(Lobby lobby, String sender, String message) {
-		if (lobby.lockAdding) {
-			m_client.sendMessage(lobby.channel, sender + " sorry, beatmap requesting is currently disabled.");
+		if (lobby.getLockAdding()) {
+			m_client.sendMessage(lobby.getChannel(), sender + " sorry, beatmap requesting is currently disabled.");
 			return;
 		}
 		if (m_bot.hasAlreadyRequested(lobby, sender)) {
-			m_client.sendMessage(lobby.channel, sender + " you have already requested a beatmap!");
+			m_client.sendMessage(lobby.getChannel(), sender + " you have already requested a beatmap!");
 			return;
 		}
 		int id = 0;
@@ -591,45 +590,48 @@ public class ChannelMessageHandler {
 		} else if (mapU.matches()) {
 			id = Integer.valueOf(mapU.group(2));
 		} else if (mapUS.matches()) {
-			m_client.sendMessage(lobby.channel, sender
+			m_client.sendMessage(lobby.getChannel(), sender
 					+ " You introduced a beatmap set link, processing beatmaps... (for a direct difficulty add use the /b/ link)");
 			int bid = Integer.valueOf(mapUS.group(2));
 			m_bot.askForConfirmation(sender, bid, lobby);
 			return;
 		}
 		if (id == 0) {
-			m_client.sendMessage(lobby.channel,
+			m_client.sendMessage(lobby.getChannel(),
 					sender + " Incorrect Arguments for !add. Please use the beatmap URL. !add [url]");
 			return;
 		}
 		try {
-			m_bot.getBeatmap(id, lobby, (obj) -> {
+			m_bot.getBeatmap(id, lobby, (JSONObject obj) -> {
 				if (obj == null) {
-					m_client.sendMessage(lobby.channel, sender + ": Beatmap not found.");
+					m_client.sendMessage(lobby.getChannel(), sender + ": Beatmap not found.");
 					return;
 				}
 
 				String mode = JSONUtils.silentGetString(obj, "mode");
-				if (!mode.equals(lobby.type)) {
-					m_client.sendMessage(lobby.channel,
+				if (!mode.equals(lobby.getType())) {
+					m_client.sendMessage(lobby.getChannel(),
 							sender + " That beatmap does not fit the lobby's current gamemode!");
 					return;
 				}
 
-				Beatmap beatmap = null;
+				Beatmap beatmap;
 				try {
 					beatmap = new Beatmap(obj);
 				} catch (JSONException e) {
 					e.printStackTrace();
+					m_client.sendMessage(lobby.getChannel(), sender
+							+ " there was an issue parsing the beatmap. Please try again later.");
+					return;
 				} catch (BrokenBeatmap e) {
-					m_client.sendMessage(lobby.channel, sender
+					m_client.sendMessage(lobby.getChannel(), sender
 							+ " this beatmap has invalid attributes. This may be due to being a broken beatmap. Avoiding.");
 					return;
 				}
 				beatmap.RequestedBy = m_bot.getId(sender);
-				if (lobby.onlyDifficulty) { // Does the lobby have
+				if (lobby.getOnlyDifficulty()) { // Does the lobby have
 					// locked difficulty limits?
-					if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) { // Are
+					if (!(beatmap.difficulty >= lobby.getMinDifficulty() && beatmap.difficulty <= lobby.getMaxDifficulty())) { // Are
 						// we
 						// inside
 						// the
@@ -637,71 +639,62 @@ public class ChannelMessageHandler {
 						// if
 						// not,
 						// return
-						m_client.sendMessage(lobby.channel,
+						m_client.sendMessage(lobby.getChannel(),
 								sender + " the difficulty of the song you requested does not match the lobby criteria. "
-										+ "(Lobby m/M: " + lobby.minDifficulty + "*/" + lobby.maxDifficulty + "*),"
+										+ "(Lobby m/M: " + lobby.getMinDifficulty() + "*/" + lobby.getMaxDifficulty() + "*),"
 										+ " Song: " + beatmap.difficulty + "*");
 						return;
 					}
 				}
-				if (!lobby.statusTypes.get(beatmap.graveyard)) {
-					m_client.sendMessage(lobby.channel,
+				if (!lobby.getStatusTypes().get(beatmap.graveyard)) {
+					m_client.sendMessage(lobby.getChannel(),
 							sender + " that beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
 					return;
 				}
 
-				if (lobby.type.equals("3")) {
-					if (lobby.keyLimit) {
-						if (beatmap.difficulty_cs != lobby.keys) {
-							m_client.sendMessage(lobby.channel,
+				if (lobby.getType().equals("3")) {
+					if (lobby.getKeyLimit()) {
+						if (beatmap.difficulty_cs != lobby.getKeys()) {
+							m_client.sendMessage(lobby.getChannel(),
 									sender + " that beatmap does not have the key count this lobby uses. Lobby: "
-											+ lobby.keys + "K");
+											+ lobby.getKeys() + "K");
 							return;
 						}
 					}
 				}
-				if (lobby.maxAR != 0) {
-					if (beatmap.difficulty_ar > lobby.maxAR) {
+				if (lobby.getMaxAR() != 0) {
+					if (beatmap.difficulty_ar > lobby.getMaxAR()) {
 
-						m_client.sendMessage(lobby.channel,
+						m_client.sendMessage(lobby.getChannel(),
 								sender + " That beatmap has a too high Approach Rate for this lobby! Max: "
-										+ lobby.maxAR + " beatmap AR: " + beatmap.difficulty_ar);
+										+ lobby.getMaxAR() + " beatmap AR: " + beatmap.difficulty_ar);
 						return;
 					}
 				}
 
-				if (lobby.onlyGenre) {
-					if (!beatmap.genre.equalsIgnoreCase(lobby.genre)) {
-						m_client.sendMessage(lobby.channel, sender + " This lobby is set to only play "
-								+ lobby.genres[Integer.valueOf(lobby.genre)] + " genre!");
+				if (lobby.getOnlyGenre()) {
+					if (!beatmap.genre.equalsIgnoreCase(lobby.getGenre())) {
+						m_client.sendMessage(lobby.getChannel(), sender + " This lobby is set to only play "
+								+ lobby.getGenres()[Integer.valueOf(lobby.getGenre())] + " genre!");
 						return;
 					}
 				}
-				if (lobby.limitDate) {
-					Matcher dateM = RegexUtils.matcher("(\\d+)\\-(\\d+)\\-(\\d+)(.+)", beatmap.date);
-					if (dateM.matches()) {
-						if (Integer.valueOf(dateM.group(1)) >= lobby.maxyear
-								|| Integer.valueOf(dateM.group(1)) <= lobby.minyear) {
-							m_client.sendMessage(lobby.channel,
-									sender + " This beatmap is too old or new for this beatmap! Range: " + lobby.minyear
-											+ "-" + lobby.maxyear);
-							return;
-						}
-					}
-				}
-				if (beatmap.total_length >= lobby.maxLength) {
-					int minutes = lobby.maxLength / 60;
-					int seconds = lobby.maxLength % 60;
+				if(!checkLimitDate(lobby, beatmap, sender))
+					return;
+
+				if (beatmap.total_length >= lobby.getMaxLength()) {
+					int minutes = lobby.getMaxLength() / 60;
+					int seconds = lobby.getMaxLength() % 60;
 					String str = String.format("%d:%02d", minutes, seconds);
-					m_client.sendMessage(lobby.channel, sender + " This beatmap too long! Max length is: " + str);
+					m_client.sendMessage(lobby.getChannel(), sender + " This beatmap too long! Max length is: " + str);
 					return;
 				}
-				
-				if (beatmap.total_length <= lobby.minLength) {
-					int minutes = lobby.minLength / 60;
-					int seconds = lobby.minLength % 60;
+
+				if (beatmap.total_length <= lobby.getMinLength()) {
+					int minutes = lobby.getMinLength() / 60;
+					int seconds = lobby.getMinLength() % 60;
 					String str = String.format("%d:%02d", minutes, seconds);
-					m_client.sendMessage(lobby.channel, sender + " This beatmap too short! Min length is: " + str);
+					m_client.sendMessage(lobby.getChannel(), sender + " This beatmap too short! Min length is: " + str);
 					return;
 				}
 				/*
@@ -719,14 +712,30 @@ public class ChannelMessageHandler {
 		}
 	}
 
+	private boolean checkLimitDate(Lobby lobby, Beatmap beatmap, String sender) {
+		if (lobby.getLimitDate()) {
+			Matcher dateM = RegexUtils.matcher("(\\d+)\\-(\\d+)\\-(\\d+)(.+)", beatmap.date);
+			if (dateM.matches()) {
+				if (Integer.valueOf(dateM.group(1)) >= lobby.getMaxYear()
+						|| Integer.valueOf(dateM.group(1)) <= lobby.getMinYear()) {
+					m_client.sendMessage(lobby.getChannel(),
+							sender + " This beatmap is too old or new for this beatmap! Range: " + lobby.getMinYear()
+									+ "-" + lobby.getMaxYear());
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
 	private void handleAddDT(Lobby lobby, String sender, String message) {
-		if (lobby.lockAdding) {
-			m_client.sendMessage(lobby.channel, sender + " sorry, beatmap requesting is currently disabled.");
+		if (lobby.getLockAdding()) {
+			m_client.sendMessage(lobby.getChannel(), sender + " sorry, beatmap requesting is currently disabled.");
 			return;
 		}
 		if (!lobby.isOP(m_bot.getId(sender))) {
 			if (m_bot.hasAlreadyRequested(lobby, sender)) {
-				m_client.sendMessage(lobby.channel, sender + " you have already requested a beatmap!");
+				m_client.sendMessage(lobby.getChannel(), sender + " you have already requested a beatmap!");
 				return;
 			}
 		}
@@ -736,20 +745,20 @@ public class ChannelMessageHandler {
 			id = Integer.valueOf(mapU.group(2));
 		}
 		if (id == 0) {
-			m_client.sendMessage(lobby.channel,
+			m_client.sendMessage(lobby.getChannel(),
 					sender + " Incorrect Arguments for !adddt. Please use the beatmap URL. !adddt [url]");
 			return;
 		}
 		try {
 			m_bot.getBeatmap(id, lobby, (obj) -> {
 				if (obj == null) {
-					m_client.sendMessage(lobby.channel, sender + ": Beatmap not found.");
+					m_client.sendMessage(lobby.getChannel(), sender + ": Beatmap not found.");
 					return;
 				}
 
 				String mode = JSONUtils.silentGetString(obj, "mode");
-				if (!mode.equals(lobby.type)) {
-					m_client.sendMessage(lobby.channel,
+				if (!mode.equals(lobby.getType())) {
+					m_client.sendMessage(lobby.getChannel(),
 							sender + " That beatmap does not fit the lobby's current gamemode!");
 					return;
 				}
@@ -779,72 +788,63 @@ public class ChannelMessageHandler {
 					parser = null;
 				} catch (IOException | URISyntaxException | BeatmapException e) {
 					e.printStackTrace();
-					m_client.sendMessage(lobby.channel, "Error Parsing beatmap. Please try again.");
+					m_client.sendMessage(lobby.getChannel(), "Error Parsing beatmap. Please try again.");
 				}
 
-				if (lobby.onlyDifficulty) { // Does the lobby have
+				if (lobby.getOnlyDifficulty()) { // Does the lobby have
 					// locked difficulty limits?
-					if (!(beatmap.difficulty >= lobby.minDifficulty && beatmap.difficulty <= lobby.maxDifficulty)) { // Are
+					if (!((beatmap.difficulty >= lobby.getMinDifficulty()) && (beatmap.difficulty <= lobby.getMaxDifficulty()))) { // Are
 						// we inside the criteria? if not, return
-						m_client.sendMessage(lobby.channel,
+						m_client.sendMessage(lobby.getChannel(),
 								sender + " the difficulty of the song you requested does not match the lobby criteria. "
-										+ "(Lobby m/M: " + lobby.minDifficulty + "*/" + lobby.maxDifficulty + "*),"
+										+ "(Lobby m/M: " + lobby.getMinDifficulty() + "*/" + lobby.getMaxDifficulty() + "*),"
 										+ " Song: " + beatmap.difficulty + "*");
 						return;
 					}
 				}
-				if (lobby.limitDate) {
-					Matcher dateM = RegexUtils.matcher("(\\d+)\\-(\\d+)\\-(\\d+)(.+)", beatmap.date);
-					if (dateM.matches()) {
-						if (Integer.valueOf(dateM.group(1)) >= lobby.maxyear
-								|| Integer.valueOf(dateM.group(1)) <= lobby.minyear) {
-							m_client.sendMessage(lobby.channel,
-									sender + " This beatmap is too old or new for this beatmap! Range: " + lobby.minyear
-											+ "-" + lobby.maxyear);
-							return;
-						}
-					}
-				}
-				if ((beatmap.total_length / 1.5) >= lobby.maxLength) {
+				if(!checkLimitDate(lobby, beatmap, sender))
+					return;
+
+				if ((beatmap.total_length / 1.5) >= lobby.getMaxLength()) {
 					String length = "";
-					int minutes = lobby.maxLength / 60;
-					int seconds = lobby.maxLength - (minutes * 60);
+					int minutes = lobby.getMaxLength() / 60;
+					int seconds = lobby.getMaxLength() - (minutes * 60);
 					length = minutes + ":" + seconds;
-					m_client.sendMessage(lobby.channel, sender + " This beatmap too long! Max length is: " + length);
+					m_client.sendMessage(lobby.getChannel(), sender + " This beatmap too long! Max length is: " + length);
 					return;
 				}
 
-				if (!lobby.statusTypes.get(beatmap.graveyard)) {
-					m_client.sendMessage(lobby.channel,
+				if (!lobby.getStatusTypes().get(beatmap.graveyard)) {
+					m_client.sendMessage(lobby.getChannel(),
 							sender + " That beatmap is not within ranking criteria for this lobby! (Ranked/loved/etc)");
 					return;
 				}
 
-				if (lobby.type.equals("3")) {
-					if (lobby.keyLimit) {
-						if (beatmap.difficulty_cs != lobby.keys) {
-							m_client.sendMessage(lobby.channel,
+				if (lobby.getType().equals("3")) {
+					if (lobby.getKeyLimit()) {
+						if (beatmap.difficulty_cs != lobby.getKeys()) {
+							m_client.sendMessage(lobby.getChannel(),
 									sender + " that beatmap does not have the key count this lobby uses. Lobby: "
-											+ lobby.keys + "K");
+											+ lobby.getKeys() + "K");
 							return;
 						}
 					}
 				}
 
-				if (lobby.maxAR != 0) {
-					if (beatmap.difficulty_ar > lobby.maxAR) {
+				if (lobby.getMaxAR() != 0) {
+					if (beatmap.difficulty_ar > lobby.getMaxAR()) {
 
-						m_client.sendMessage(lobby.channel,
+						m_client.sendMessage(lobby.getChannel(),
 								sender + " That beatmap has a too high Approach Rate for this lobby! Max: "
-										+ lobby.maxAR + " beatmap AR: " + beatmap.difficulty_ar);
+										+ lobby.getMaxAR() + " beatmap AR: " + beatmap.difficulty_ar);
 						return;
 					}
 				}
 
-				if (lobby.onlyGenre) {
-					if (!beatmap.genre.equalsIgnoreCase(lobby.genre)) {
-						m_client.sendMessage(lobby.channel, sender + " This lobby is set to only play "
-								+ lobby.genres[Integer.valueOf(lobby.genre)] + " genre!");
+				if (lobby.getOnlyGenre()) {
+					if (!beatmap.genre.equalsIgnoreCase(lobby.getGenre())) {
+						m_client.sendMessage(lobby.getChannel(), sender + " This lobby is set to only play "
+								+ lobby.getGenres()[Integer.valueOf(lobby.getGenre())] + " genre!");
 						return;
 					}
 				}
@@ -856,50 +856,50 @@ public class ChannelMessageHandler {
 	}
 
 	private void handleReady(Lobby lobby, String sender) {
-		if (lobby.Playing) {
+		if (lobby.getPlaying()) {
 			m_client.sendMessage(sender, "The lobby is currently playing, you cant vote for starting right now.");
 			return;
 		}
-		if (lobby.currentBeatmap == null) {
+		if (lobby.getCurrentBeatmap() == null) {
 			m_client.sendMessage(sender, "Please add a map before starting playing!");
 			return;
 		}
 		if (lobby.votestarted(sender)) {
 			m_client.sendMessage(sender, "You already voted for starting!");
 		} else {
-			lobby.voteStart.add(sender);
-			m_client.sendMessage(lobby.channel, sender + " voted for starting! (" + lobby.voteStart.size() + "/"
-					+ (int) round(lobby.slots.size() * 0.75, 0) + ")");
+			lobby.getVoteStart().add(sender);
+			m_client.sendMessage(lobby.getChannel(), sender + " voted for starting! (" + lobby.getVoteStart().size() + "/"
+					+ (int) round(lobby.getSlots().size() * 0.75, 0) + ")");
 			checkLobbyReady(lobby);
 		}
 	}
 
 	private void handleSkip(Lobby lobby, String sender) {
-		if (lobby.Playing) {
+		if (lobby.getPlaying()) {
 			m_client.sendMessage(sender, "The lobby is currently playing, you cant vote for skipping right now.");
 			return;
 		}
 		if (lobby.votedskip(sender)) {
 			m_client.sendMessage(sender, "You already voted for skipping!");
 		} else {
-			lobby.voteskip.add(sender);
-			m_client.sendMessage(lobby.channel, sender + " voted for skipping! (" + lobby.voteskip.size() + "/"
-					+ (int) round(lobby.slots.size() * 0.6, 0) + ")");
-			if (lobby.voteskip.size() >= (int) round(lobby.slots.size() * 0.6, 0)) {
-				m_client.sendMessage(lobby.channel, "Map has been skipped by vote.");
+			lobby.getVoteskip().add(sender);
+			m_client.sendMessage(lobby.getChannel(), sender + " voted for skipping! (" + lobby.getVoteskip().size() + "/"
+					+ (int) round(lobby.getSlots().size() * 0.6, 0) + ")");
+			if (lobby.getVoteskip().size() >= (int) round(lobby.getSlots().size() * 0.6, 0)) {
+				m_client.sendMessage(lobby.getChannel(), "Map has been skipped by vote.");
 				m_bot.nextbeatmap(lobby);
 			}
 		}
 	}
 
 	private void handleInfo(Lobby lobby) {
-		m_client.sendMessage(lobby.channel, "This is an in-development IRC version of autohost developed by HyPeX. "
+		m_client.sendMessage(lobby.getChannel(), "This is an in-development IRC version of autohost developed by HyPeX. "
 				+ "Do !commands to know them ;) " + "[https://discord.gg/UDabf2y Discord] "
 				+ "[https://www.reddit.com/r/osugame/comments/67u0k9/autohost_bot_is_finally_ready_for_public_usage/ Reddit Thread]");
 	}
 
 	private void handleCommands(Lobby lobby) {
-		m_client.sendMessage(lobby.channel,
+		m_client.sendMessage(lobby.getChannel(),
 				"C.List: !add [beatmap] " + "| !ready/!r " + "| !skip/!s " + "| !queue/!playlist " + "| !ver "
 						+ "| !last " + "| !maxdiff " + "| !mindiff " + "| !graveyard " + "| !clearhost " + "| !hostme "
 						+ "| !favorites/!fav");
@@ -907,34 +907,34 @@ public class ChannelMessageHandler {
 
 	private void handlePlaylist(Lobby lobby) {
 		StringBuilder sb = new StringBuilder();
-		sb.append("Queue: ").append(lobby.beatmapQueue.size());
-		for (Beatmap bm : lobby.beatmapQueue) {
+		sb.append("Queue: ").append(lobby.getBeatmapQueue().size());
+		for (Beatmap bm : lobby.getBeatmapQueue()) {
 			sb.append(" || ").append("[https://osu.ppy.sh/b/").append(bm.beatmap_id).append(" ").append(bm.artist)
 					.append(" - ").append(bm.title).append("] [").append(round(bm.difficulty, 2)).append("*]");
 		}
-		m_client.sendMessage(lobby.channel, sb.toString());
+		m_client.sendMessage(lobby.getChannel(), sb.toString());
 	}
 
 	private void handleSelect(Lobby lobby, String sender, String message) {
 		Matcher sm = RegexUtils.matcher("select (.+)", message);
 		if (!sm.matches()) {
-			m_client.sendMessage(lobby.channel,
+			m_client.sendMessage(lobby.getChannel(),
 					"Incorrect usage, please do !select [number]. " + "Please consider using the number in []");
 			return;
 		}
-		if (lobby.requests.containsKey(sender)) {
+		if (lobby.getRequests().containsKey(sender)) {
 			int map = Integer.valueOf(sm.group(1));
 			// TODO: Fix this ~~amazing~~ line.
-			if (!(map > lobby.requests.get(sender).bids.size())) {
+			if (!(map > lobby.getRequests().get(sender).bids.size())) {
 				m_bot.addBeatmap(lobby,
-						lobby.requests.get(sender).beatmaps.get(lobby.requests.get(sender).bids.get(map)));
+						lobby.getRequests().get(sender).beatmaps.get(lobby.getRequests().get(sender).bids.get(map)));
 			} else {
-				m_client.sendMessage(lobby.channel,
-						"The options only range from 0-" + (lobby.requests.get(sender).bids.size() - 1));
+				m_client.sendMessage(lobby.getChannel(),
+						"The options only range from 0-" + (lobby.getRequests().get(sender).bids.size() - 1));
 			}
-			lobby.requests.remove(sender);
+			lobby.getRequests().remove(sender);
 		} else {
-			m_client.sendMessage(lobby.channel, "You dont have any pending map requests.");
+			m_client.sendMessage(lobby.getChannel(), "You dont have any pending map requests.");
 		}
 	}
 
@@ -945,12 +945,12 @@ public class ChannelMessageHandler {
 		Matcher diffM = RegexUtils.matcher("maxdiff (\\d+(?:\\.\\d+)?)", message);
 		if (diffM.matches()) {
 			double maxDiff = Double.valueOf(diffM.group(1));
-			if (lobby.minDifficulty != null && maxDiff <= lobby.minDifficulty) {
-				m_client.sendMessage(lobby.channel,
-						"Max diff must be greater than min diff, which is " + lobby.minDifficulty);
+			if (lobby.getMinDifficulty() != null && maxDiff <= lobby.getMinDifficulty()) {
+				m_client.sendMessage(lobby.getChannel(),
+						"Max diff must be greater than min diff, which is " + lobby.getMinDifficulty());
 			} else {
-				lobby.maxDifficulty = maxDiff;
-				m_client.sendMessage(lobby.channel, "Max difficulty now is " + diffM.group(1));
+				lobby.setMaxDifficulty(maxDiff);
+ 				m_client.sendMessage(lobby.getChannel(), "Max difficulty now is " + diffM.group(1));
 			}
 		}
 	}
@@ -958,7 +958,7 @@ public class ChannelMessageHandler {
 	private void handleFreeMods(Lobby lobby, String sender) {
 		if (!lobby.isOP(m_bot.getId(sender)))
 			return;
-		m_client.sendMessage(lobby.channel, "!mp mods Freemod");
+		m_client.sendMessage(lobby.getChannel(), "!mp mods Freemod");
 	}
 
 	private void handleMode(Lobby lobby, String sender, String message) {
@@ -968,74 +968,75 @@ public class ChannelMessageHandler {
 		Matcher modeMatch = RegexUtils.matcher("mode (.+)", message);
 		if (modeMatch.matches()) {
 			if (modeMatch.group(1).equalsIgnoreCase("mania")) {
-				lobby.type = "3";
-				m_client.sendMessage(lobby.channel, "This lobby is now a mania lobby");
+				lobby.setType("3");
+				m_client.sendMessage(lobby.getChannel(), "This lobby is now a mania lobby");
 			} else if (modeMatch.group(1).equalsIgnoreCase("std") || modeMatch.group(1).equalsIgnoreCase("standard")) {
-				lobby.type = "0";
-				m_client.sendMessage(lobby.channel, "This lobby is now a Standard lobby");
+				lobby.setType("0");
+				m_client.sendMessage(lobby.getChannel(), "This lobby is now a Standard lobby");
 			} else if (modeMatch.group(1).equalsIgnoreCase("ctb")) {
-				lobby.type = "2";
-				m_client.sendMessage(lobby.channel, "This lobby is now a Catch The Beat lobby");
+				lobby.setType("2");
+				m_client.sendMessage(lobby.getChannel(), "This lobby is now a Catch The Beat lobby");
 			} else if (modeMatch.group(1).equalsIgnoreCase("taiko")) {
-				lobby.type = "1";
-				m_client.sendMessage(lobby.channel, "This lobby is now a Taiko lobby");
+				lobby.setType("1");
+				m_client.sendMessage(lobby.getChannel(), "This lobby is now a Taiko lobby");
 			}
-			if (!lobby.type.equals("3") && lobby.keyLimit) {
-				lobby.keyLimit = false;
-				m_client.sendMessage(lobby.channel, "Since this is not a mania lobby anymore, disabling Key Limiter");
+			if (!lobby.getType().equals("3") && lobby.getKeyLimit()) {
+				lobby.setKeyLimit(false);
+				m_client.sendMessage(lobby.getChannel(), "Since this is not a mania lobby anymore, disabling Key Limiter");
 			}
 		}
 	}
 
 	private void handleGraveyard(Lobby lobby, String sender) {
 		if (!lobby.isOP(m_bot.getId(sender))) {
-			m_client.sendMessage(lobby.channel, sender + " You're not an Operator!");
+			m_client.sendMessage(lobby.getChannel(), sender + " You're not an Operator!");
 			return;
 		}
 
-		if (lobby.graveyard) {
-			lobby.graveyard = false;
-			lobby.WIP = false;
-			lobby.pending = false;
-			lobby.statusTypes.put(0, false);
-			lobby.statusTypes.put(-1, false);
-			lobby.statusTypes.put(-2, false);
-			m_client.sendMessage(lobby.channel, "Graveyard maps are now unallowed.");
+		if (lobby.getGraveyard()) {
+			lobby.setGraveyard(false);
+			lobby.setWIP(false);
+			lobby.setPending(false);
+
+			lobby.getStatusTypes().put(0, false);
+			lobby.getStatusTypes().put(-1, false);
+			lobby.getStatusTypes().put(-2, false);
+			m_client.sendMessage(lobby.getChannel() , "Graveyard maps are now unallowed.");
 		} else {
-			lobby.graveyard = true;
-			lobby.WIP = true;
-			lobby.pending = true;
-			lobby.statusTypes.put(0, true);
-			lobby.statusTypes.put(-1, true);
-			lobby.statusTypes.put(-2, true);
-			m_client.sendMessage(lobby.channel, "Graveyard maps are now allowed.");
+			lobby.setGraveyard(true);
+			lobby.setWIP(true);
+			lobby.setPending(true);
+			lobby.getStatusTypes().put(0, true);
+			lobby.getStatusTypes().put(-1, true);
+			lobby.getStatusTypes().put(-2, true);
+			m_client.sendMessage(lobby.getChannel(), "Graveyard maps are now allowed.");
 		}
 	}
 
 	private void handleLock(Lobby lobby, String sender) {
 		if (!lobby.isOP(m_bot.getId(sender))) {
-			m_client.sendMessage(lobby.channel, sender + ", you're not an Operator!");
+			m_client.sendMessage(lobby.getChannel(), sender + ", you're not an Operator!");
 			return;
 		}
 
-		if (lobby.lockAdding) {
-			m_client.sendMessage(lobby.channel, "Map requests are now enabled.");
-			lobby.lockAdding = false;
+		if (lobby.getLockAdding()) {
+			m_client.sendMessage(lobby.getChannel(), "Map requests are now enabled.");
+			lobby.setLockAdding(false);
 		} else {
-			m_client.sendMessage(lobby.channel, "Map requests are now disabled.");
-			lobby.lockAdding = true;
+			m_client.sendMessage(lobby.getChannel(), "Map requests are now disabled.");
+			lobby.setLockAdding(true);
 		}
 	}
 
 	private void handleVersion(Lobby lobby) {
-		m_client.sendMessage(lobby.channel, "Bot version is " + AutoHost.VERSION);
+		m_client.sendMessage(lobby.getChannel(), "Bot version is " + AutoHost.VERSION);
 	}
 
 	private void handleWait(Lobby lobby) {
 		// TODO: This logic is slightly confusing, specifically the naming of
 		// "extendTimer"
-		m_client.sendMessage(lobby.channel,
-				lobby.timer.extendTimer() ? "Timer extended by 1 minute." : "Timer was already extended.");
+		m_client.sendMessage(lobby.getChannel(),
+				lobby.getTimer().extendTimer() ? "Timer extended by 1 minute." : "Timer was already extended.");
 	}
 
 	private void handleLobby(Lobby lobby, String sender, String message) {
@@ -1064,19 +1065,19 @@ public class ChannelMessageHandler {
 		Matcher idmatch = RegexUtils.matcher("kick (\\d+)", message);
 		Matcher namematch = RegexUtils.matcher("kick (.+)", message);
 		if (idmatch.matches()) {
-			m_client.sendMessage(lobby.channel, "!mp kick #" + idmatch.group(1));
+			m_client.sendMessage(lobby.getChannel(), "!mp kick #" + idmatch.group(1));
 			return;
 		} else if (namematch.matches()) {
 			for (int i = 0; i < 16; i++) {
-				Slot slot = lobby.slots.get(i);
+				Slot slot = lobby.getSlots().get(i);
 				if (slot != null)
 					if (slot.name.toLowerCase().contains(namematch.group(1).toLowerCase())) {
-						m_client.sendMessage(lobby.channel, "!mp kick #" + slot.playerid);
+						m_client.sendMessage(lobby.getChannel(), "!mp kick #" + slot.playerid);
 						return;
 					}
 			}
 		}
-		m_client.sendMessage(lobby.channel, sender + " user not found.");
+		m_client.sendMessage(lobby.getChannel(), sender + " user not found.");
 	}
 
 	private void handleAddOP(Lobby lobby, String sender, String message) {
@@ -1085,7 +1086,7 @@ public class ChannelMessageHandler {
 
 		Matcher diffM = RegexUtils.matcher("addop (\\d+)", message);
 		if (diffM.matches()) {
-			lobby.OPs.add(Integer.valueOf(diffM.group(1)));
+			lobby.getOPs().add(Integer.valueOf(diffM.group(1)));
 		}
 	}
 
@@ -1098,7 +1099,7 @@ public class ChannelMessageHandler {
 	private void handleForceStart(Lobby lobby, String sender) {
 		if (!lobby.isOP(m_bot.getId(sender)))
 			return;
-		m_client.sendMessage(lobby.channel, "!mp start");
+		m_client.sendMessage(lobby.getChannel(), "!mp start");
 	}
 
 	private void handlePassword(Lobby lobby, String sender, String message) {
@@ -1108,19 +1109,19 @@ public class ChannelMessageHandler {
 		Matcher pwmatch = RegexUtils.matcher("password (.+)?", message);
 		if (pwmatch.matches() && pwmatch.groupCount() == 1) {
 			if (pwmatch.group(1).equalsIgnoreCase("reset")) {
-				lobby.Password = "";
-				m_client.sendMessage(lobby.channel, "!mp password");
-				m_client.sendMessage(lobby.channel, "Password has been cleared!");
+				lobby.setPassword("");
+				m_client.sendMessage(lobby.getChannel(), "!mp password");
+				m_client.sendMessage(lobby.getChannel(), "Password has been cleared!");
 			} else {
-				lobby.Password = pwmatch.group(1);
-				m_client.sendMessage(lobby.channel, "!mp password " + lobby.Password);
-				m_client.sendMessage(lobby.channel, "Password has been set!");
+				lobby.setPassword(pwmatch.group(1));
+				m_client.sendMessage(lobby.getChannel(), "!mp password " + lobby.getPassword());
+				m_client.sendMessage(lobby.getChannel(), "Password has been set!");
 			}
 		} else {
-			if (lobby.Password == null || lobby.Password.equals("")) {
-				m_client.sendMessage(lobby.channel, "This lobby has no password.");
+			if (lobby.getPassword() == null || lobby.getPassword().equals("")) {
+				m_client.sendMessage(lobby.getChannel(), "This lobby has no password.");
 			} else {
-				m_client.sendMessage(lobby.channel, "Current password is " + lobby.Password);
+				m_client.sendMessage(lobby.getChannel(), "Current password is " + lobby.getPassword());
 			}
 		}
 	}
@@ -1132,12 +1133,12 @@ public class ChannelMessageHandler {
 		Matcher diffM = RegexUtils.matcher("mindiff (\\d+(?:\\.\\d+)?)", message);
 		if (diffM.matches()) {
 			double minDiff = Double.valueOf(diffM.group(1));
-			if (lobby.maxDifficulty != null && minDiff >= lobby.maxDifficulty) {
-				m_client.sendMessage(lobby.channel,
-						"Min diff must be less than max diff, which is " + lobby.maxDifficulty);
+			if (lobby.getMaxDifficulty() != null && minDiff >= lobby.getMaxDifficulty()) {
+				m_client.sendMessage(lobby.getChannel(),
+						"Min diff must be less than max diff, which is " + lobby.getMaxDifficulty());
 			} else {
-				lobby.minDifficulty = minDiff;
-				m_client.sendMessage(lobby.channel, "New minimum difficulty is " + diffM.group(1));
+				lobby.setMinDifficulty(minDiff);
+				m_client.sendMessage(lobby.getChannel(), "New minimum difficulty is " + diffM.group(1));
 			}
 		}
 	}
@@ -1148,14 +1149,14 @@ public class ChannelMessageHandler {
 
 		Matcher diffM = RegexUtils.matcher("maxar (.+)", message);
 		if (diffM.matches()) {
-			lobby.maxAR = Double.valueOf(diffM.group(1));
-			if (lobby.maxAR == 0.0)
-				m_client.sendMessage(lobby.channel, "Approach Rate limit was removed.");
+			lobby.setMaxAR(Double.valueOf(diffM.group(1)));
+			if (lobby.getMaxAR() == 0.0)
+				m_client.sendMessage(lobby.getChannel(), "Approach Rate limit was removed.");
 			else
-				m_client.sendMessage(lobby.channel, "New maximum approach rate is " + diffM.group(1));
+				m_client.sendMessage(lobby.getChannel(), "New maximum approach rate is " + diffM.group(1));
 		} else {
-			lobby.maxAR = 0.0;
-			m_client.sendMessage(lobby.channel, "Approach Rate limit was removed.");
+			lobby.setMaxAR(0.0);
+			m_client.sendMessage(lobby.getChannel(), "Approach Rate limit was removed.");
 		}
 	}
 
@@ -1165,22 +1166,22 @@ public class ChannelMessageHandler {
 
 		Matcher yrM = RegexUtils.matcher("maxyear (.+)", message);
 		if (yrM.matches()) {
-			if (Integer.valueOf(yrM.group(1)) < lobby.minyear) {
-				m_client.sendMessage(lobby.channel,
+			if (Integer.valueOf(yrM.group(1)) < lobby.getMinYear()) {
+				m_client.sendMessage(lobby.getChannel(),
 						"Max year cant be smaller than min year. " + "Please lower that first ;)");
 				return;
 			}
-			lobby.maxyear = Integer.valueOf(yrM.group(1));
-			m_client.sendMessage(lobby.channel, "New newer year limit now is " + yrM.group(1));
-			if (lobby.limitDate) {
+			lobby.setMaxYear(Integer.valueOf(yrM.group(1)));
+			m_client.sendMessage(lobby.getChannel(), "New newer year limit now is " + yrM.group(1));
+			if (lobby.getLimitDate()) {
 
 			} else {
-				lobby.limitDate = true;
-				m_client.sendMessage(lobby.channel, "Year Limiter was enabled. For toggling it, do !limityear");
+				lobby.setLimitDate(true);
+				m_client.sendMessage(lobby.getChannel(), "Year Limiter was enabled. For toggling it, do !limityear");
 			}
 		} else {
-			lobby.maxyear = 2200;
-			m_client.sendMessage(lobby.channel, "Newest year limit was removed.");
+			lobby.setMaxYear(2200);
+			m_client.sendMessage(lobby.getChannel(), "Newest year limit was removed.");
 		}
 	}
 
@@ -1190,22 +1191,22 @@ public class ChannelMessageHandler {
 
 		Matcher yrM = RegexUtils.matcher("minyear (.+)", message);
 		if (yrM.matches()) {
-			if (Integer.valueOf(yrM.group(1)) > lobby.maxyear) {
-				m_client.sendMessage(lobby.channel,
+			if (Integer.valueOf(yrM.group(1)) > lobby.getMaxYear()) {
+				m_client.sendMessage(lobby.getChannel(),
 						"Min year cant be bigger than max year. " + "Please increase that first ;)");
 				return;
 			}
-			lobby.minyear = Integer.valueOf(yrM.group(1));
-			m_client.sendMessage(lobby.channel, "Oldest year limit now is " + yrM.group(1));
-			if (lobby.limitDate) {
+			lobby.setMinYear(Integer.valueOf(yrM.group(1)));
+			m_client.sendMessage(lobby.getChannel(), "Oldest year limit now is " + yrM.group(1));
+			if (lobby.getLimitDate()) {
 
 			} else {
-				lobby.limitDate = true;
-				m_client.sendMessage(lobby.channel, "Year Limiter was enabled. For toggling it, do !limityear");
+				lobby.setLimitDate(true);
+				m_client.sendMessage(lobby.getChannel(), "Year Limiter was enabled. For toggling it, do !limityear");
 			}
 		} else {
-			lobby.minyear = 0;
-			m_client.sendMessage(lobby.channel, "Oldest year limit was removed");
+			lobby.setMinYear(0);
+			m_client.sendMessage(lobby.getChannel(), "Oldest year limit was removed");
 		}
 	}
 
@@ -1213,8 +1214,8 @@ public class ChannelMessageHandler {
 		if (!lobby.isOP(m_bot.getId(sender)))
 			return;
 
-		lobby.limitDate = !lobby.limitDate;
-		m_client.sendMessage(lobby.channel, "Toggled Date limiting. State: " + lobby.limitDate);
+		lobby.setLimitDate(!lobby.getLimitDate());
+		m_client.sendMessage(lobby.getChannel(), "Toggled Date limiting. State: " + lobby.getLimitDate());
 	}
 
 	private void handleMinDuration(Lobby lobby, String sender, String message) {
@@ -1223,33 +1224,33 @@ public class ChannelMessageHandler {
 
 		Matcher yrM = RegexUtils.matcher("minduration (.+)", message);
 		if (yrM.matches()) {
-			if ((Integer.valueOf(yrM.group(1)) >= lobby.maxLength) || (Integer.valueOf(yrM.group(1)) < 0)) {
-				m_client.sendMessage(lobby.channel, "Minimum duration cant be bigger or equal than maximum, or smaller than zero!");
+			if ((Integer.valueOf(yrM.group(1)) >= lobby.getMaxLength()) || (Integer.valueOf(yrM.group(1)) < 0)) {
+				m_client.sendMessage(lobby.getChannel(), "Minimum duration cant be bigger or equal than maximum, or smaller than zero!");
 				return;
 			}
-			lobby.minLength = Integer.valueOf(yrM.group(1));
-			int minutes = lobby.minLength / 60;
-			int seconds = lobby.minLength % 60;
+			lobby.setMinLength(Integer.valueOf(yrM.group(1)));
+			int minutes = lobby.getMinLength() / 60;
+			int seconds = lobby.getMinLength() % 60;
 			String str = String.format("%d:%02d", minutes, seconds);
-			m_client.sendMessage(lobby.channel, "Minimum duration now is " + str);
+			m_client.sendMessage(lobby.getChannel(), "Minimum duration now is " + str);
 		}
 	}
-	
+
 	private void handleMaxDuration(Lobby lobby, String sender, String message) {
 		if (!lobby.isOP(m_bot.getId(sender)))
 			return;
 
 		Matcher yrM = RegexUtils.matcher("maxduration (.+)", message);
 		if (yrM.matches()) {
-			if (Integer.valueOf(yrM.group(1)) <= lobby.minLength) {
-				m_client.sendMessage(lobby.channel, "Maximum duration cant be smaller or equal than minimum!");
+			if (Integer.valueOf(yrM.group(1)) <= lobby.getMinLength()) {
+				m_client.sendMessage(lobby.getChannel(), "Maximum duration cant be smaller or equal than minimum!");
 				return;
 			}
-			lobby.maxLength = Integer.valueOf(yrM.group(1));
-			int minutes = lobby.maxLength / 60;
-			int seconds = lobby.maxLength % 60;
+			lobby.setMaxLength(Integer.valueOf(yrM.group(1)));
+			int minutes = lobby.getMaxLength() / 60;
+			int seconds = lobby.getMaxLength() % 60;
 			String str = String.format("%d:%02d", minutes, seconds);
-			m_client.sendMessage(lobby.channel, "Maximum duration now is " + str);
+			m_client.sendMessage(lobby.getChannel(), "Maximum duration now is " + str);
 		}
 	}
 
@@ -1257,20 +1258,20 @@ public class ChannelMessageHandler {
 		int id = m_bot.getId(sender);
 		if (!lobby.isOP(id))
 			return;
-		m_client.sendMessage(lobby.channel, "!mp host #" + id);
+		m_client.sendMessage(lobby.getChannel(), "!mp host #" + id);
 	}
 
 	private void handleClearHost(Lobby lobby, String sender) {
 		if (!lobby.isOP(m_bot.getId(sender)))
 			return;
-		m_client.sendMessage(lobby.channel, "!mp clearhost");
+		m_client.sendMessage(lobby.getChannel(), "!mp clearhost");
 	}
 
 	private void handleRandom(Lobby lobby, String sender) {
 		if (!lobby.isOP(m_bot.getId(sender)))
 			return;
-		lobby.TrueRandom = !lobby.TrueRandom;
-		m_client.sendMessage(lobby.channel, "Toggled Random Maps. State: " + lobby.TrueRandom);
+		lobby.setTrueRandom(!lobby.getTrueRandom());
+		m_client.sendMessage(lobby.getChannel(), "Toggled Random Maps. State: " + lobby.getTrueRandom());
 	}
 
 	private void handleRename(Lobby lobby, String sender, String message) {
@@ -1279,49 +1280,49 @@ public class ChannelMessageHandler {
 
 		Matcher renameM = RegexUtils.matcher("rename (.+)", message);
 		if (renameM.matches()) {
-			lobby.name = renameM.group(1);
+			lobby.setName(renameM.group(1));
 		}
 	}
 
 	private void handleSay(Lobby lobby, String sender, String message) {
 		if (!sender.equalsIgnoreCase("HyPeX")) {
-			m_client.sendMessage(lobby.channel, "I'm afraid " + sender + " I can't let you do that.");
+			m_client.sendMessage(lobby.getChannel(), "I'm afraid " + sender + " I can't let you do that.");
 			return;
 		}
 		Matcher sayM = RegexUtils.matcher("say (.+)", message);
 		if (sayM.matches()) {
-			m_client.sendMessage(lobby.channel, sayM.group(1));
+			m_client.sendMessage(lobby.getChannel(), sayM.group(1));
 		} else {
-			m_client.sendMessage(lobby.channel,
+			m_client.sendMessage(lobby.getChannel(),
 					"Wrong command syntax. Really dude? " + "You made me... and you cant get a fucking command right");
 		}
 	}
 
 	private void handleCloseRoom(Lobby lobby, String sender) {
 		if (!lobby.isOP(m_bot.getId(sender))) {
-			m_client.sendMessage(lobby.channel, sender + " You're not an Operator!");
+			m_client.sendMessage(lobby.getChannel(), sender + " You're not an Operator!");
 			return;
 		}
 
-		m_client.sendMessage(lobby.channel, "!mp close");
+		m_client.sendMessage(lobby.getChannel(), "!mp close");
 		m_bot.removeLobby(lobby);
 	}
 
 	private void handleSearchSong(Lobby lobby, String sender, String message) {
-		if (lobby.lockAdding) {
-			m_client.sendMessage(lobby.channel, sender + " sorry, beatmap requesting is currently disabled.");
+		if (lobby.getLockAdding()) {
+			m_client.sendMessage(lobby.getChannel(), sender + " sorry, beatmap requesting is currently disabled.");
 			return;
 		}
 		if (!lobby.isOP(m_bot.getId(sender))) {
 			if (m_bot.hasAlreadyRequested(lobby, sender)) {
-				m_client.sendMessage(lobby.channel, sender + " you have already requested a beatmap!");
+				m_client.sendMessage(lobby.getChannel(), sender + " you have already requested a beatmap!");
 				return;
 			}
 		}
 		String mapname = null;
 		String author = null;
 		if (message.split(" ").length < 2) {
-			m_client.sendMessage(lobby.channel, sender + " Please include a name!");
+			m_client.sendMessage(lobby.getChannel(), sender + " Please include a name!");
 			return;
 		}
 		Matcher mapsearchM = RegexUtils.matcher("searchsong ([^|]+)(\\ \\|\\ )?([^|]+)", message);
@@ -1333,7 +1334,7 @@ public class ChannelMessageHandler {
 				}
 			}
 			if (mapname == null) {
-				m_client.sendMessage(lobby.channel, sender
+				m_client.sendMessage(lobby.getChannel(), sender
 						+ " Incorrect Arguments for !searchsong. Please use the beatmap title. !searchsong [title]");
 			} else {
 				m_bot.searchBeatmap(mapname, lobby, sender, author);

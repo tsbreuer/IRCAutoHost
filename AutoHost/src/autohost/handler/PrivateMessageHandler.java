@@ -85,16 +85,16 @@ public class PrivateMessageHandler {
 
 	private void handleReInvite(String sender) {
 		for (Lobby lobby : m_bot.getLobbies().values()) {
-			if (lobby.creatorName.equals(sender)) {
-				m_client.sendMessage(lobby.channel, "!mp invite "+sender);
+			if (lobby.getCreatorName().equals(sender)) {
+				m_client.sendMessage(lobby.getChannel(), "!mp invite "+sender);
 				}
 		}
 	}
 
 	private void handleRefresh(String sender) {
 		for (Lobby lobby : m_bot.getLobbies().values()) {
-			if (lobby.creatorName.equals(sender)) {
-				m_client.sendMessage(lobby.channel, "!mp settings");
+			if (lobby.getCreatorName().equals(sender)) {
+				m_client.sendMessage(lobby.getChannel(), "!mp settings");
 				m_client.sendMessage(sender, "Sent a check to the lobby. Wait 5 seconds, and ask me to create your room again.");
 			}
 		}
@@ -112,32 +112,32 @@ public class PrivateMessageHandler {
 		int i = 0;
 		for (Lobby lobby : m_bot.getLobbies().values()) {
 			i++;
-			list.put(i, lobby.channel);
+			list.put(i, lobby.getChannel());
 			String password;
-			if (lobby.Password.equalsIgnoreCase("")) {
+			if (lobby.getPassword().equalsIgnoreCase("")) {
 				password = "Password: Disabled";
 			} else {
 				password = "Password: Enabled";
 			}
 
 			m_client.sendMessage(sender,
-					"Lobby [" + i + "] || Name: " + lobby.name + " || Stars: " + lobby.minDifficulty + "* - "
-							+ lobby.maxDifficulty + "* || Slots: [" + lobby.slots.size() + "/16] || " + password);
+					"Lobby [" + i + "] || Name: " + lobby.getName() + " || Stars: " + lobby.getMinDifficulty() + "* - "
+							+ lobby.getMaxDifficulty() + "* || Slots: [" + lobby.getSlots().size() + "/16] || " + password);
 		}
 		m_client.sendMessage(sender, "--- Permanent Lobbies ---");
 		for (LobbyChecker lobbyC : m_bot.getpermanentLobbies().values()) {  
 			Lobby lobby = lobbyC.lobby;
 			i++;
 			String password;
-			if (lobby.Password.equalsIgnoreCase("")) {
+			if (lobby.getPassword().equalsIgnoreCase("")) {
 				password = "Password: Disabled";
 			} else {
 				password = "Password: Enabled";
 			}
-			list.put(i, lobby.channel);
+			list.put(i, lobby.getChannel());
 			m_client.sendMessage(sender,
-					"Lobby [" + i + "] || Name: " + lobby.name + " || Stars: " + lobby.minDifficulty + "* - "
-							+ lobby.maxDifficulty + "* || Slots: [" + lobby.slots.size() + "/16] || " + password);
+					"Lobby [" + i + "] || Name: " + lobby.getName() + " || Stars: " + lobby.getMinDifficulty() + "* - "
+							+ lobby.getMaxDifficulty() + "* || Slots: [" + lobby.getSlots().size() + "/16] || " + password);
 		}
 		user.saveRoomList(list);
 	}
@@ -147,9 +147,9 @@ public class PrivateMessageHandler {
 			return;
 
 		for (Lobby lobby : m_bot.getLobbies().values()) {
-			lobby.slots.clear();
-			m_client.sendMessage(lobby.channel, "!mp settings");
-			System.out.println("Reloading " + lobby.channel);
+			lobby.getSlots().clear();
+			m_client.sendMessage(lobby.getChannel(), "!mp settings");
+			System.out.println("Reloading " + lobby.getChannel());
 		}
 	}
 
@@ -165,7 +165,7 @@ public class PrivateMessageHandler {
 		if (globalmatch.matches()) {
 			m_client.sendMessage(sender, "Message sent");
 			for (Lobby lobby : m_bot.getLobbies().values()) {
-				m_client.sendMessage(lobby.channel, "GlobalMessage: " + globalmatch.group(1));
+				m_client.sendMessage(lobby.getChannel(), "GlobalMessage: " + globalmatch.group(1));
 			}
 		} else {
 			m_client.sendMessage(sender, "Syntax error. Please use !globalsay [message]");
@@ -180,7 +180,7 @@ public class PrivateMessageHandler {
 		if (globalmatch.matches()) {
 			m_client.sendMessage(sender, "Message sent");
 			for (Lobby lobby : m_bot.getLobbies().values()) {
-				m_client.sendMessage(lobby.channel, "!mp close");
+				m_client.sendMessage(lobby.getChannel(), "!mp close");
 			}
 		} else {
 			m_client.sendMessage(sender, "Syntax error. Please use !globalclose");
@@ -212,18 +212,18 @@ public class PrivateMessageHandler {
 			}
 			Boolean found = false;
 			for (Lobby lobby : m_bot.getLobbies().values()) {
-				if (lobbyChannel.equals(lobby.channel)) {
+				if (lobbyChannel.equals(lobby.getChannel())) {
 					found = true;
-					if (lobby.slots.size() < 16) {
-						if (lobby.Password.equals("")) {
-							m_client.sendMessage(lobby.channel, "!mp invite " + sender);
+					if (lobby.getSlots().size() < 16) {
+						if (lobby.getPassword().equals("")) {
+							m_client.sendMessage(lobby.getChannel(), "!mp invite " + sender);
 						} else {
 							if (matchMove.groupCount() < 2) {
 								m_client.sendMessage(sender,
 										"The lobby you selected has a password. Please use !moveme [lobby] [pw]");
 							} else {
-								if (matchMove.group(2).equals(lobby.Password)) {
-									m_client.sendMessage(lobby.channel, "!mp invite " + sender);
+								if (matchMove.group(2).equals(lobby.getPassword())) {
+									m_client.sendMessage(lobby.getChannel(), "!mp invite " + sender);
 								}
 							}
 						}
@@ -234,18 +234,18 @@ public class PrivateMessageHandler {
 			}
 			for (LobbyChecker lobbyC : m_bot.getpermanentLobbies().values()) {
 				Lobby lobby = lobbyC.lobby;
-				if (lobbyChannel.equals(lobby.channel)) {
+				if (lobbyChannel.equals(lobby.getChannel())) {
 					found = true;
-					if (lobby.slots.size() < 16) {
-						if (lobby.Password.equals("")) {
-							m_client.sendMessage(lobby.channel, "!mp invite " + sender);
+					if (lobby.getSlots().size() < 16) {
+						if (lobby.getPassword().equals("")) {
+							m_client.sendMessage(lobby.getChannel(), "!mp invite " + sender);
 						} else {
 							if (matchMove.groupCount() < 2) {
 								m_client.sendMessage(sender,
 										"The lobby you selected has a password. Please use !moveme [lobby] [pw]");
 							} else {
-								if (matchMove.group(2).equals(lobby.Password)) {
-									m_client.sendMessage(lobby.channel, "!mp invite " + sender);
+								if (matchMove.group(2).equals(lobby.getPassword())) {
+									m_client.sendMessage(lobby.getChannel(), "!mp invite " + sender);
 								}
 							}
 						}
@@ -263,9 +263,9 @@ public class PrivateMessageHandler {
 				m_client.sendMessage(sender, "Wrong format, please use !moveme [lobby number provided by help]");
 			} else {
 				for (Lobby lobby : m_bot.getLobbies().values()) {
-					if (lobby.Password.equals(matchPW.group(1))) {
-						if (lobby.slots.size() < lobby.LobbySize) {
-							m_client.sendMessage(lobby.channel, "!mp invite " + sender);
+					if (lobby.getPassword().equals(matchPW.group(1))) {
+						if (lobby.getSlots().size() < lobby.getLobbySize()) {
+							m_client.sendMessage(lobby.getChannel(), "!mp invite " + sender);
 						} else
 							m_client.sendMessage(sender, "Lobby is full, try again later ;)");
 
@@ -275,9 +275,9 @@ public class PrivateMessageHandler {
 				}
 				for (LobbyChecker lobbyC : m_bot.getpermanentLobbies().values()) {
 					Lobby lobby = lobbyC.lobby;
-					if (lobby.Password.equals(matchPW.group(1))) {
-						if (lobby.slots.size() < lobby.LobbySize) {
-							m_client.sendMessage(lobby.channel, "!mp invite " + sender);
+					if (lobby.getPassword().equals(matchPW.group(1))) {
+						if (lobby.getSlots().size() < lobby.getLobbySize()) {
+							m_client.sendMessage(lobby.getChannel(), "!mp invite " + sender);
 						} else
 							m_client.sendMessage(sender, "Lobby is full, try again later ;)");
 
@@ -298,7 +298,7 @@ public class PrivateMessageHandler {
 		boolean isOP = m_bot.isOP(sender);
 		if (!isOP) {
 			for (Lobby lobby : m_bot.getLobbies().values()) {
-				if (lobby.creatorName.equalsIgnoreCase(sender)) {
+				if (lobby.getCreatorName().equalsIgnoreCase(sender)) {
 					m_client.sendMessage(sender, "You already have an alive lobby! If your lobby died but i didnt detect it, send me !refresh");
 					m_client.sendMessage(sender, "If after doing so its still alive, or you forgot your password, PM me !reinvite to get invited back in");
 					return;

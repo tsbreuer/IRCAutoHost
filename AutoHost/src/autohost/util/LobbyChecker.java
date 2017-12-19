@@ -19,7 +19,7 @@ public class LobbyChecker extends Thread {
 	}
 
 	private void sendMessage(String message) {
-		m_bot.getClient().sendMessage(lobby.channel, message);
+		m_bot.getClient().sendMessage(lobby.getChannel(), message);
 	}
 
 	public void run() {
