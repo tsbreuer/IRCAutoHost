@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$//AutoHost.iml" filepath="$PROJECT_DIR$//AutoHost.iml" />
+      <module fileurl="file://$PROJECT_DIR$/AutoHostDiscord.iml" filepath="$PROJECT_DIR$/AutoHostDiscord.iml" />
       <module fileurl="file://$PROJECT_DIR$/IRCAutohost.iml" filepath="$PROJECT_DIR$/IRCAutohost.iml" />
       <module fileurl="file://$PROJECT_DIR$/Shared.iml" filepath="$PROJECT_DIR$/Shared.iml" />
       <module fileurl="file://$PROJECT_DIR$/Web.iml" filepath="$PROJECT_DIR$/Web.iml" />

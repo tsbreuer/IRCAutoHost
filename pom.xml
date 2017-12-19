@@ -13,5 +13,6 @@
         <module>Shared</module>
         <module>AutoHost</module>
         <module>Web</module>
+        <module>AutoHostDiscord</module>
     </modules>
 </project>
