@@ -1114,7 +1114,7 @@ public class ChannelMessageHandler {
 				m_client.sendMessage(lobby.getChannel(), "Password has been cleared!");
 			} else {
 				lobby.setPassword(pwmatch.group(1));
-				m_client.sendMessage(lobby.getChannel(), "!mp password " + lobby.getPassword());
+				m_client.sendMessage(lobby.getChannel(), "!mp password " + pwmatch.group(1));
 				m_client.sendMessage(lobby.getChannel(), "Password has been set!");
 			}
 		} else {
