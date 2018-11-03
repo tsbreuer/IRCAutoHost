@@ -813,10 +813,6 @@ public class IRCBot {
 									+ "/" + c50s + "/" + miss + " || Combo: (" + maxcombo + "/" + ppcalc.getMaxCombo()
 									+ ") || " + String.format("%.02f", +acc * 100) + "% || PP: "
 									+ String.format("%.02f", pp) + " ");
-					ppcalc = null;
-					parser = null;
-					beatmap = null;
-					System.gc();
 				}
 			}
 			if (!foundMap) {
@@ -905,8 +901,6 @@ public class IRCBot {
 			perf = perf2 = perf3 = perf4 = null;
 		} catch (IOException | URISyntaxException | BeatmapException | BrokenBeatmap e) {
 			System.out.println(bm.id);
-			bm = null;
-			System.gc();
 			if (e.getClass().equals(BrokenBeatmap.class)) {
 				throw (new BrokenBeatmap("doesnt-exist"));
 			}
@@ -952,10 +946,8 @@ public class IRCBot {
 									"Beatmap no longer exists. Anyone send !retry for trying a new one");
 							lobby.setRetryForMap(true);
 						}
-						bm = null;
 						return;
 					}
-					System.gc();
 
 					if (bm == null) {
 						if (!lobby.getType().equals("2")) {
@@ -1285,7 +1277,6 @@ public class IRCBot {
 				pplife = null;
 			}
 		}
-		System.gc();
 		if (pplife == null) {
 			if (!lobby.getType().equals("2")) {
 				m_client.sendMessage(lobby.getChannel(), "Beatmap was unable to be analyzed. Does it exist? Skipping");
