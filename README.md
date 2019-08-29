@@ -25,6 +25,10 @@ Update #5: TournamentAutoHost never took off. Working on implementing both web i
 
 ---------------
 
+Update #6: Uh.... I mean https//autohost.moe is a thing.. but... yeah... 
+
+---------------
+
 This is a bot run only and only by me on the AutoHost account while the commands and usage will be public. This github is setup for the purpose of showing the code and to use as an example for other projects. Big shoutout and thanks for @ek and @ThePooN and the whole #programming channel from osu!soup Discord.
 
 Also, Thanks to /u/Rivenation for prividing me with the random beatmap search from osusearch ;)
