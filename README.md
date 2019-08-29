@@ -25,7 +25,7 @@ Update #5: TournamentAutoHost never took off. Working on implementing both web i
 
 ---------------
 
-Update #6: Uh.... I mean https//autohost.moe is a thing.. but... yeah... 
+Update #6: Uh.... I mean [https://autohost.moe](https://autohost.moe) is a thing.. but... yeah... 
 
 ---------------
 
